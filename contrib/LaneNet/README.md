@@ -139,7 +139,7 @@ python train.py \
 ```shell
 python val.py \
        --config configs/lanenet.yml \
-       --model_path output/iter_5000/model.pdparams
+       --model_path output/iter_20000/model.pdparams
 
 ```
 
@@ -149,7 +149,7 @@ python val.py \
 ```shell
 python predict.py \
        --config configs/lanenet.yml \
-       --model_path output/iter_5000/model.pdparams \
+       --model_path output/iter_20000/model.pdparams \
        --image_path data/test_images/0.jpg \
        --save_dir output/result
 
