@@ -15,13 +15,13 @@
 我们提前准备好了一份处理好的数据集，通过以下代码进行下载，该数据集由图森车道线检测数据集转换而来，你也可以在这个[页面](https://github.com/TuSimple/tusimple-benchmark/issues/3)下载原始数据集。
 
 ```shell
-python dataset/download_tusimple.py
+python data/download_tusimple.py
 ```
 
 数据目录结构
 ```
 LaneNet
-|-- dataset
+|-- data
     |-- tusimple_lane_detection
         |-- training
             |-- gt_binary_image
