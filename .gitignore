@@ -111,3 +111,12 @@ venv.bak/
 # js
 node_modules/
 package-lock.json
+
+# lane
+tusimple_lane_detection/
+output/
+saved_model/
+tusimple_ipm_remap.yml
+result/
+test_images/
+visual_results/
