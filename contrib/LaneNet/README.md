@@ -12,10 +12,16 @@
 
 ## 一. 准备待训练数据
 
-我们提前准备好了一份处理好的数据集，通过以下代码进行下载，该数据集由图森车道线检测数据集转换而来，你也可以在这个[页面](https://github.com/TuSimple/tusimple-benchmark/issues/3)下载原始数据集。
+我们提前准备好了一份处理好的数据集，通过以下代码进行下载，该数据集由图森车道线检测数据集转换而来。
 
 ```shell
 python data/download_tusimple.py
+```
+你也可以在这个[页面](https://github.com/TuSimple/tusimple-benchmark/issues/3)下载原始数据集。通过以下代码执行生成。
+
+```shell
+python tools/generate_tusimple_dataset.py --src_dir path/to/your/unzipped/file
+
 ```
 
 数据目录结构
