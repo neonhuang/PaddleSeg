@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
-import paddle
 import paddle.nn as nn
-import paddle.nn.functional as F
 
 from paddleseg import utils
 from paddleseg.cvlibs import manager, param_init
-from paddleseg.models import layers
-from paddleseg.models.bisenet import DetailBranch, SemanticBranch, BGA
+from .bisenet import BiSeNetV2
 
 
 @manager.MODELS.add_component
@@ -36,48 +31,37 @@ class Lanenet(nn.Layer):
     def __init__(
             self,
             num_classes,  # 相互独立的目标类别的数量。
+            backbone=None,
             lambd=0.25,  # 控制语义分支通道大小的因素。默认:0.25
             align_corners=False,
             pretrained=None):  # 预训练模型的url或path。 默认:None
         super().__init__()
 
-        C1, C2, C3 = 64, 64, 128
-        db_channels = (C1, C2, C3)
-        C1, C3, C4, C5 = int(C1 * lambd), int(C3 * lambd), 64, 128
-        sb_channels = (C1, C3, C4, C5)
-        mid_channels = 128
+        self.backbone = backbone
+        model_name = self.backbone.__class__.__name__
+        if model_name in "VGGNet":
+            self.fcn = FCN(backbone)
+        if model_name in "BiSeNetV2":
+            self.bisenet = BiSeNetV2(
+                num_classes,
+                lambd=lambd,
+                align_corners=align_corners,
+                pretrained=pretrained)
 
-        self.db = DetailBranch(db_channels)
-        self.sb = SemanticBranch(sb_channels)
-
-        self.bga = BGA(mid_channels,
-                       align_corners)  # Bilateral Guided Aggregation
-        self.binary_seg = SegHead(128, 64, 2)
-        self.instance_seg = SegHead(128, 64, 4)
-
-        self.align_corners = align_corners
         self.pretrained = pretrained
         self.init_weight()
 
     def forward(self, x):
-        dfm = self.db(x)
-        _, _, _, _, sfm = self.sb(x)
-        agr = self.bga(dfm, sfm)
-        binary_seg_branch_output = self.binary_seg(agr)
-        instance_seg_branch_output = self.instance_seg(agr)
-
-        if not self.training:
-            logit_list = [binary_seg_branch_output, instance_seg_branch_output]
+        logit_list = []
+        model_name = self.backbone.__class__.__name__
+        if model_name in "VGGNet":
+            logit_list = self.fcn(x)
+        elif model_name in "BiSeNetV2":
+            logit_list = self.bisenet(x)
         else:
-            logit_list = [binary_seg_branch_output, instance_seg_branch_output]
-
-        logit_list = [
-            F.interpolate(
-                logit,
-                paddle.shape(x)[2:],
-                mode='bilinear',
-                align_corners=self.align_corners) for logit in logit_list
-        ]
+            raise Exception(
+                "LaneNet expect vgg and bisenet backbone, but received {}".
+                format("others"))
 
         return logit_list
 
@@ -93,20 +77,44 @@ class Lanenet(nn.Layer):
                     param_init.constant_init(sublayer.bias, value=0.0)
 
 
-class SegHead(nn.Layer):
-    def __init__(self, in_dim, mid_dim, num_classes):
+class FCN(nn.Layer):
+    def __init__(self, backbone):
         super().__init__()
+        self.backbone = backbone
+        self.deconv1 = nn.Conv2DTranspose(
+            64, 64, kernel_size=4, stride=2, padding="SAME")
+        self.deconv2 = nn.Conv2DTranspose(
+            64, 64, kernel_size=16, stride=8, padding="SAME")
+        self.conv1x1 = nn.Conv2D(64, 2, 1, 1)
+        self.conv1x2 = nn.Conv2D(64, 4, 1, 1)
 
-        self.conv_3x3 = nn.Sequential(
-            layers.ConvBNReLU(in_dim, mid_dim, 3), nn.Dropout(0.1))
+    def decoder(self, input):
+        encoder_list = ['pool5', 'pool4', 'pool3']
+        # score stage
+        input_tensor = input[encoder_list[0]]
+        dim = input_tensor.shape[1]
+        score = nn.Conv2D(dim, 64, 1, 1)(input_tensor)
 
-        self.conv_1x1_bn = nn.Sequential(
-            layers.ConvBNReLU(mid_dim, in_dim, 1), nn.Dropout(0.1))
+        encoder_list = encoder_list[1:]
+        for i in range(len(encoder_list)):
+            deconv_out = self.deconv1(score)
+            input_tensor = input[encoder_list[i]]
+            dim = input_tensor.shape[1]
+            score = nn.Conv2D(dim, 64, 1, 1)(input_tensor)
+            score = deconv_out + score
 
-        self.conv_1x1 = nn.Conv2D(in_dim, num_classes, 1, 1)
+        emLogits = self.deconv2(score)
+        segLogits = self.conv1x1(emLogits)
+        emLogits = self.conv1x2(emLogits)
+        return segLogits, emLogits
 
     def forward(self, x):
-        conv1 = self.conv_3x3(x)
-        conv2 = self.conv_1x1_bn(conv1)
-        conv3 = self.conv_1x1(conv2)
-        return conv3
+        x3, x4, x5 = self.backbone(x)
+        output = {}
+        output['pool3'] = x3
+        output['pool4'] = x4
+        output['pool5'] = x5
+
+        segLogits, emLogits = self.decoder(output)
+        logit_list = [segLogits, emLogits]
+        return logit_list

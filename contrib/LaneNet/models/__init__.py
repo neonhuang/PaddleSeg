@@ -13,3 +13,5 @@
 # limitations under the License.
 
 from .lanenet import Lanenet
+from .bisenet import *
+from .vgg import *
