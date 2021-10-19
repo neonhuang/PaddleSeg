@@ -17,6 +17,7 @@ import paddle.nn as nn
 from paddleseg import utils
 from paddleseg.cvlibs import manager, param_init
 from .bisenet import BiSeNetV2
+from .enet import ENet
 
 
 @manager.MODELS.add_component
@@ -24,6 +25,7 @@ class Lanenet(nn.Layer):
     """
     Args:
         num_classes (int): The unique number of target classes.
+        backbone (paddle.nn.Layer): Backbone network,currently support vgg, bisenet, enet
         lambd (float, optional): A factor for controlling the size of semantic branch channels. Default: 0.25.
         pretrained (str, optional): The path or url of pretrained model. Default: None.
     """
@@ -41,12 +43,16 @@ class Lanenet(nn.Layer):
         model_name = self.backbone.__class__.__name__
         if model_name in "VGGNet":
             self.fcn = FCN(backbone)
-        if model_name in "BiSeNetV2":
+        elif model_name in "BiSeNetV2":
             self.bisenet = BiSeNetV2(
                 num_classes,
                 lambd=lambd,
                 align_corners=align_corners,
                 pretrained=pretrained)
+        elif model_name in "ENet":
+            self.enet = ENet(pretrained=pretrained)
+        else:
+            print("error")
 
         self.pretrained = pretrained
         self.init_weight()
@@ -58,6 +64,8 @@ class Lanenet(nn.Layer):
             logit_list = self.fcn(x)
         elif model_name in "BiSeNetV2":
             logit_list = self.bisenet(x)
+        elif model_name in "ENet":
+            logit_list = self.enet(x)
         else:
             raise Exception(
                 "LaneNet expect vgg and bisenet backbone, but received {}".

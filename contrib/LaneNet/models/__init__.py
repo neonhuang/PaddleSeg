@@ -15,3 +15,4 @@
 from .lanenet import Lanenet
 from .bisenet import *
 from .vgg import *
+from .enet import *
