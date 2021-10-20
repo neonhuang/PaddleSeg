@@ -115,7 +115,7 @@ loss:
 
 # 模型配置
 model:
-  type: Lanenet
+  type: LaneBiseNet
   pretrained: Null
 ```
 

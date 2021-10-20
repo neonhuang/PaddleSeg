@@ -50,8 +50,5 @@ loss:
   coef: [1, 1]
 
 model:
-  type: Lanenet
-  backbone:
-    type: BiseNet
-    pretrained: Null
-  num_classes: 2
+  type: LaneBiseNet
+  pretrained: Null

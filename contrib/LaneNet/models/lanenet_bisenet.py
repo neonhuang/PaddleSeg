@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -24,6 +22,46 @@ from paddleseg.models import layers
 
 
 @manager.MODELS.add_component
+class LaneBiseNet(nn.Layer):
+    """
+    Args:
+        num_classes (int): The unique number of target classes.
+        lambd (float, optional): A factor for controlling the size of semantic branch channels. Default: 0.25.
+        pretrained (str, optional): The path or url of pretrained model. Default: None.
+    """
+
+    def __init__(
+            self,
+            num_classes,  # 相互独立的目标类别的数量。
+            lambd=0.25,  # 控制语义分支通道大小的因素。默认:0.25
+            align_corners=False,
+            pretrained=None):  # 预训练模型的url或path。 默认:None
+        super().__init__()
+
+        self.bisenet = BiSeNetV2(
+            num_classes,
+            lambd=lambd,
+            align_corners=align_corners,
+            pretrained=pretrained)
+        self.pretrained = pretrained
+        self.init_weight()
+
+    def forward(self, x):
+        logit_list = self.bisenet(x)
+        return logit_list
+
+    def init_weight(self):
+        if self.pretrained is not None:
+            utils.load_entire_model(self, self.pretrained)
+        else:
+            for sublayer in self.sublayers():
+                if isinstance(sublayer, nn.Conv2D):
+                    param_init.kaiming_normal_init(sublayer.weight)
+                elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
+                    param_init.constant_init(sublayer.weight, value=1.0)
+                    param_init.constant_init(sublayer.bias, value=0.0)
+
+
 class BiSeNetV2(nn.Layer):
     """
     The BiSeNet V2 implementation based on PaddlePaddle.
@@ -62,37 +100,34 @@ class BiSeNetV2(nn.Layer):
         self.pretrained = pretrained
         self.init_weight()
 
-    def forward(self, x):
+    def encoder(self, x):
         dfm = self.db(x)
         _, _, _, _, sfm = self.sb(x)
         agr = self.bga(dfm, sfm)
-        binary_seg_branch_output = self.binary_seg(agr)
-        instance_seg_branch_output = self.instance_seg(agr)
-        # logit = self.head()
+        return agr
+
+    def decoder(self, x, input_size):
+        binary_seg_branch_output = self.binary_seg(x)
+        instance_seg_branch_output = self.instance_seg(x)
 
         if not self.training:
             logit_list = [binary_seg_branch_output, instance_seg_branch_output]
         else:
             logit_list = [binary_seg_branch_output, instance_seg_branch_output]
 
-        # if not self.training:
-        #     logit_list = [logit]
-        # else:
-        #     logit1 = self.aux_head1(feat1)
-        #     logit2 = self.aux_head2(feat2)
-        #     logit3 = self.aux_head3(feat3)
-        #     logit4 = self.aux_head4(feat4)
-        #     logit_list = [logit, logit1, logit2, logit3, logit4]
-
         logit_list = [
             F.interpolate(
                 logit,
-                paddle.shape(x)[2:],
+                input_size,
                 mode='bilinear',
                 align_corners=self.align_corners) for logit in logit_list
         ]
-
         return logit_list
+
+    def forward(self, x):
+        output = self.encoder(x)
+        segLogits, emLogits = self.decoder(output, paddle.shape(x)[2:])
+        return segLogits, emLogits
 
     def init_weight(self):
         if self.pretrained is not None:
@@ -104,12 +139,6 @@ class BiSeNetV2(nn.Layer):
                 elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
                     param_init.constant_init(sublayer.weight, value=1.0)
                     param_init.constant_init(sublayer.bias, value=0.0)
-
-
-@manager.BACKBONES.add_component
-def BiseNet(**args):
-    model = BiSeNetV2(**args)
-    return model
 
 
 class StemBlock(nn.Layer):

@@ -16,17 +16,14 @@ import paddle.nn as nn
 
 from paddleseg import utils
 from paddleseg.cvlibs import manager, param_init
-from .bisenet import BiSeNetV2
-from .enet import ENet
 
 
 @manager.MODELS.add_component
-class Lanenet(nn.Layer):
+class LaneFCN(nn.Layer):
     """
     Args:
         num_classes (int): The unique number of target classes.
         backbone (paddle.nn.Layer): Backbone network,currently support vgg, bisenet, enet
-        lambd (float, optional): A factor for controlling the size of semantic branch channels. Default: 0.25.
         pretrained (str, optional): The path or url of pretrained model. Default: None.
     """
 
@@ -34,43 +31,16 @@ class Lanenet(nn.Layer):
             self,
             num_classes,  # 相互独立的目标类别的数量。
             backbone=None,
-            lambd=0.25,  # 控制语义分支通道大小的因素。默认:0.25
-            align_corners=False,
             pretrained=None):  # 预训练模型的url或path。 默认:None
         super().__init__()
 
         self.backbone = backbone
-        model_name = self.backbone.__class__.__name__
-        if model_name in "VGGNet":
-            self.fcn = FCN(backbone)
-        elif model_name in "BiSeNetV2":
-            self.bisenet = BiSeNetV2(
-                num_classes,
-                lambd=lambd,
-                align_corners=align_corners,
-                pretrained=pretrained)
-        elif model_name in "ENet":
-            self.enet = ENet(pretrained=pretrained)
-        else:
-            print("error")
-
+        self.fcn = FCN(backbone)
         self.pretrained = pretrained
         self.init_weight()
 
     def forward(self, x):
-        logit_list = []
-        model_name = self.backbone.__class__.__name__
-        if model_name in "VGGNet":
-            logit_list = self.fcn(x)
-        elif model_name in "BiSeNetV2":
-            logit_list = self.bisenet(x)
-        elif model_name in "ENet":
-            logit_list = self.enet(x)
-        else:
-            raise Exception(
-                "LaneNet expect vgg and bisenet backbone, but received {}".
-                format("others"))
-
+        logit_list = self.fcn(x)
         return logit_list
 
     def init_weight(self):
@@ -96,6 +66,14 @@ class FCN(nn.Layer):
         self.conv1x1 = nn.Conv2D(64, 2, 1, 1)
         self.conv1x2 = nn.Conv2D(64, 4, 1, 1)
 
+    def encoder(self, x):
+        x3, x4, x5 = self.backbone(x)
+        output = {}
+        output['pool3'] = x3
+        output['pool4'] = x4
+        output['pool5'] = x5
+        return output
+
     def decoder(self, input):
         encoder_list = ['pool5', 'pool4', 'pool3']
         # score stage
@@ -117,12 +95,7 @@ class FCN(nn.Layer):
         return segLogits, emLogits
 
     def forward(self, x):
-        x3, x4, x5 = self.backbone(x)
-        output = {}
-        output['pool3'] = x3
-        output['pool4'] = x4
-        output['pool5'] = x5
-
+        output = self.encoder(x)
         segLogits, emLogits = self.decoder(output)
         logit_list = [segLogits, emLogits]
         return logit_list

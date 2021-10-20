@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lanenet import Lanenet
-from .bisenet import *
+from .lanenet_enet import LaneEnet
+from .lanenet_bisenet import LaneBiseNet
+from .lanenet_fcn import LaneFCN
 from .vgg import *
-from .enet import *

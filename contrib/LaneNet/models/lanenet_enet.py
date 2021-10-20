@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,14 +12,107 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from paddleseg import utils
+from paddleseg.cvlibs import manager, param_init
 import paddle
 import paddle.nn as nn
 from paddle.nn import Conv2D
 from paddle.nn import MaxPool2D
-from paddle import ParamAttr
 
 from paddleseg.cvlibs import manager
 from paddleseg.models import layers
+
+
+@manager.MODELS.add_component
+class LaneEnet(nn.Layer):
+    """
+    Args:
+        num_classes (int): The unique number of target classes.
+        pretrained (str, optional): The path or url of pretrained model. Default: None.
+    """
+
+    def __init__(
+            self,
+            num_classes,  # 相互独立的目标类别的数量。
+            pretrained=None):  # 预训练模型的url或path。 默认:None
+        super().__init__()
+
+        self.enet = ENet(pretrained=pretrained)
+        self.pretrained = pretrained
+        self.init_weight()
+
+    def forward(self, x):
+        logit_list = self.enet(x)
+        return logit_list
+
+    def init_weight(self):
+        if self.pretrained is not None:
+            utils.load_entire_model(self, self.pretrained)
+        else:
+            for sublayer in self.sublayers():
+                if isinstance(sublayer, nn.Conv2D):
+                    param_init.kaiming_normal_init(sublayer.weight)
+                elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
+                    param_init.constant_init(sublayer.weight, value=1.0)
+                    param_init.constant_init(sublayer.bias, value=0.0)
+
+
+class ENet(nn.Layer):
+    def __init__(self, pretrained=None):
+        super(ENet, self).__init__()
+        self.pretrained = pretrained
+        self._relu = layers.Activation("relu")
+        self._prelu = layers.Activation("prelu")
+        self._initial_block = Initial_Block()
+        self._enet_stage1 = ENet_stage1(name_scope="LaneNetBase")
+        self._enet_stage2 = ENet_stage2(name_scope="LaneNetBase")
+        self._enetSeg_stage3 = ENet_stage3(name_scope="LaneNetSeg")
+        self._enetSeg_stage4 = ENet_stage4(name_scope="LaneNetSeg")
+        self._enetSeg_stage5 = ENet_stage5(name_scope="LaneNetSeg")
+        self._enetEm_stage3 = ENet_stage3(name_scope="LaneNetEm")
+        self._enetEm_stage4 = ENet_stage4(name_scope="LaneNetEm")
+        self._enetEm_stage5 = ENet_stage5(name_scope="LaneNetEm")
+
+    def prelu(self, x, decoder=False):
+        if decoder:
+            return self.relu(x)
+        return self.prelu(x)
+
+    def encoder(self, inputs):
+        initial = self._initial_block(inputs)
+        stage1, inputs_shape_1 = self._enet_stage1(initial)
+        stage2, inputs_shape_2 = self._enet_stage2(stage1)
+        output = (initial, stage1, stage2, inputs_shape_1, inputs_shape_2)
+        return output
+
+    def decoder(self, input):
+        initial, stage1, stage2, inputs_shape_1, inputs_shape_2 = input
+
+        segStage3 = self._enetSeg_stage3(stage2)
+        # upsampling
+        segStage4 = self._enetSeg_stage4(segStage3, inputs_shape_2, stage1)
+        segStage5 = self._enetSeg_stage5(segStage4, inputs_shape_1, initial)
+
+        segLogits = nn.Conv2DTranspose(
+            segStage5.shape[1], 2, kernel_size=2, stride=2,
+            padding="SAME")(segStage5)
+
+        emStage3 = self._enetEm_stage3(stage2)
+        # upsampling
+        emStage4 = self._enetEm_stage4(emStage3, inputs_shape_2, stage1)
+        emStage5 = self._enetEm_stage5(emStage4, inputs_shape_1, initial)
+
+        emLogits = nn.Conv2DTranspose(
+            emStage5.shape[1], 4, kernel_size=2, stride=2,
+            padding="SAME")(emStage5)
+
+        return segLogits, emLogits
+
+    def forward(self, inputs):
+        output = self.encoder(inputs)
+        segLogits, emLogits = self.decoder(output)
+        return segLogits, emLogits
+
 
 # Bottleneck type
 REGULAR = 1
@@ -77,7 +170,6 @@ class bottleneck(nn.Layer):
                 kernel_size=3,
                 stride=2,
                 padding="SAME",
-                # weight_attr=ParamAttr(name=self.name_scope + "/down_sample/" + "main_max_pool"),
                 bias_attr=False)(inputs)
 
             # First get the difference in depth to pad, then pad with zeros only on the last dimension.
@@ -92,7 +184,6 @@ class bottleneck(nn.Layer):
                 kernel_size=2,
                 stride=2,
                 padding="same",
-                # weight_attr=ParamAttr(name=self.name_scope + "/down_sample/" + "block1")
             )(inputs)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -102,7 +193,6 @@ class bottleneck(nn.Layer):
                 reduced_depth,
                 kernel_size=self.filter_size,
                 padding="same",
-                # weight_attr=ParamAttr(name=self.name_scope + "/down_sample/" + "block2")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -112,7 +202,6 @@ class bottleneck(nn.Layer):
                 self.output_depth,
                 kernel_size=1,
                 padding="same",
-                # weight_attr=ParamAttr(name=self.name_scope + "/down_sample/" + "block3")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -142,7 +231,6 @@ class bottleneck(nn.Layer):
                 reduced_depth,
                 kernel_size=1,
                 padding="same",
-                # weight_attr=ParamAttr(name=self.name_scope + "/dilated/" + "block1")
             )(inputs)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -154,7 +242,6 @@ class bottleneck(nn.Layer):
                 kernel_size=self.filter_size,
                 padding="same",
                 dilation=self.dilation_rate,
-                # weight_attr=ParamAttr(name=self.name_scope + "/dilated/" + "block2")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -164,7 +251,6 @@ class bottleneck(nn.Layer):
                 net.shape[1],
                 self.output_depth,
                 kernel_size=1,
-                # weight_attr=ParamAttr(name=self.name_scope + "/dilated/" + "block3")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -190,7 +276,6 @@ class bottleneck(nn.Layer):
                 inputs.shape[1],
                 reduced_depth,
                 kernel_size=1,
-                # weight_attr=ParamAttr(name=self.name_scope + "/asymmetric/" + "block1")
             )(inputs)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -201,7 +286,6 @@ class bottleneck(nn.Layer):
                 reduced_depth,
                 kernel_size=[self.filter_size, 1],
                 padding="same",
-                # weight_attr=ParamAttr(name=self.name_scope + "/asymmetric/" + "block2/asymmetric_conv2a")
             )(net)
 
             net = layers.ConvBN(
@@ -209,8 +293,6 @@ class bottleneck(nn.Layer):
                 reduced_depth,
                 kernel_size=[1, self.filter_size],
                 padding="same",
-                # weight_attr=ParamAttr(
-                #     name=self.name_scope + "/asymmetric/" + "block2/asymmetric_conv2b")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -221,7 +303,6 @@ class bottleneck(nn.Layer):
                 self.output_depth,
                 kernel_size=1,
                 padding="same",
-                # weight_attr=ParamAttr(name=self.name_scope + "/asymmetric/" + "block3")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -254,7 +335,6 @@ class bottleneck(nn.Layer):
                 inputs.shape[1],
                 self.output_depth,
                 kernel_size=1,
-                # weight_attr=ParamAttr(name=self.name_scope + "/upsampling/" + "unpool")
             )(inputs)
             net_unpool = nn.functional.interpolate(
                 net_unpool, self.output_shape[2:], mode='bilinear')
@@ -265,7 +345,6 @@ class bottleneck(nn.Layer):
                 inputs.shape[1],
                 reduced_depth,
                 kernel_size=1,
-                # weight_attr=ParamAttr(name=self.name_scope + "/upsampling/" + "block1")
             )(inputs)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -285,7 +364,6 @@ class bottleneck(nn.Layer):
                 net.shape[1],
                 self.output_depth,
                 kernel_size=1,
-                # weight_attr=ParamAttr(name=self.name_scope + "/upsampling/" + "block3")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -310,7 +388,6 @@ class bottleneck(nn.Layer):
                 inputs.shape[1],
                 reduced_depth,
                 kernel_size=1,
-                # weight_attr=ParamAttr(name=self.name_scope + "/regular/" + "block1")
             )(inputs)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -320,7 +397,6 @@ class bottleneck(nn.Layer):
                 net.shape[1],
                 reduced_depth,
                 kernel_size=self.filter_size,
-                # weight_attr=ParamAttr(name=self.name_scope + "/regular/" + "block2")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -330,7 +406,6 @@ class bottleneck(nn.Layer):
                 net.shape[1],
                 self.output_depth,
                 kernel_size=1,
-                # weight_attr=ParamAttr(name=self.name_scope + "/regular/" + "block3")
             )(net)
             net = self.prelu(net, decoder=self.decoder)
 
@@ -600,66 +675,3 @@ class ENet_stage5(nn.Layer):
             net = net + connect_tensor
         net = self.bottleneck5_1(net)
         return net
-
-
-class ENet(nn.Layer):
-    def __init__(self, pretrained=None):
-        super(ENet, self).__init__()
-        self.pretrained = pretrained
-        self._relu = layers.Activation("relu")
-        self._prelu = layers.Activation("prelu")
-        self._initial_block = Initial_Block()
-        self._enet_stage1 = ENet_stage1(name_scope="LaneNetBase")
-        self._enet_stage2 = ENet_stage2(name_scope="LaneNetBase")
-        self._enetSeg_stage3 = ENet_stage3(name_scope="LaneNetSeg")
-        self._enetSeg_stage4 = ENet_stage4(name_scope="LaneNetSeg")
-        self._enetSeg_stage5 = ENet_stage5(name_scope="LaneNetSeg")
-        self._enetEm_stage3 = ENet_stage3(name_scope="LaneNetEm")
-        self._enetEm_stage4 = ENet_stage4(name_scope="LaneNetEm")
-        self._enetEm_stage5 = ENet_stage5(name_scope="LaneNetEm")
-
-    def prelu(self, x, decoder=False):
-        if decoder:
-            return self.relu(x)
-        return self.prelu(x)
-
-    def encoder(self, inputs):
-        initial = self._initial_block(inputs)
-        stage1, inputs_shape_1 = self._enet_stage1(initial)
-        stage2, inputs_shape_2 = self._enet_stage2(stage1)
-        output = (initial, stage1, stage2, inputs_shape_1, inputs_shape_2)
-        return output
-
-    def decoder(self, input):
-        initial, stage1, stage2, inputs_shape_1, inputs_shape_2 = input
-
-        segStage3 = self._enetSeg_stage3(stage2)
-        # upsampling
-        segStage4 = self._enetSeg_stage4(segStage3, inputs_shape_2, stage1)
-        segStage5 = self._enetSeg_stage5(segStage4, inputs_shape_1, initial)
-
-        segLogits = nn.Conv2DTranspose(
-            segStage5.shape[1], 2, kernel_size=2, stride=2,
-            padding="SAME")(segStage5)
-
-        emStage3 = self._enetEm_stage3(stage2)
-        # upsampling
-        emStage4 = self._enetEm_stage4(emStage3, inputs_shape_2, stage1)
-        emStage5 = self._enetEm_stage5(emStage4, inputs_shape_1, initial)
-
-        emLogits = nn.Conv2DTranspose(
-            emStage5.shape[1], 4, kernel_size=2, stride=2,
-            padding="SAME")(emStage5)
-
-        return segLogits, emLogits
-
-    def forward(self, inputs):
-        output = self.encoder(inputs)
-        segLogits, emLogits = self.decoder(output)
-        return segLogits, emLogits
-
-
-@manager.BACKBONES.add_component
-def EnetBone(**args):
-    model = ENet(**args)
-    return model

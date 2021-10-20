@@ -138,7 +138,7 @@ class VGGNet(nn.Layer):
         # ids_list.append(ids)
         # x = F.relu(self._conv_6(x))
         # fea_list.append(x)
-        return x3, x4, x5  #fea_list
+        return x3, x4, x5  # fea_list
 
     def init_weight(self):
         if self.pretrained is not None:
