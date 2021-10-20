@@ -22,7 +22,6 @@ from paddleseg.cvlibs import manager, Config
 from paddleseg.utils import get_sys_env, logger, config_check
 from core.train import train
 from datasets import lane_seg
-from models import lanenet
 from models.losses import *
 
 
