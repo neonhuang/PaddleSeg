@@ -16,6 +16,7 @@ import paddle
 import paddle.nn as nn
 from paddle.nn import Conv2D
 from paddle.nn import MaxPool2D
+from paddle import ParamAttr
 
 from paddleseg.cvlibs import manager
 from paddleseg.models import layers
@@ -60,7 +61,7 @@ class bottleneck(nn.Layer):
             return self._relu(x)
         return self._prelu(x)
 
-    def forward(self, inputs):
+    def forward(self, inputs, output_shape=None):
         # Calculate the depth reduction based on the projection ratio used in 1x1 convolution.
         reduced_depth = int(inputs.shape[1] / self.projection_ratio)
         type = self.type
@@ -240,6 +241,7 @@ class bottleneck(nn.Layer):
             # Check if pooling indices is given
 
             # Check output_shape given or not
+            self.output_shape = output_shape
             if self.output_shape is None:
                 raise ValueError('Output depth is not given')
 
@@ -343,219 +345,307 @@ class bottleneck(nn.Layer):
             return net
 
 
-class ENet(nn.Layer):
-    def __init__(self, pretrained=None):
-        super(ENet, self).__init__()
-        self.pretrained = pretrained
+class Initial_Block(nn.Layer):
+    '''
+    The initial block for ENet has 2 branches: The convolution branch and MaxPool branch.
+    The conv branch has 13 filters, while the maxpool branch gives 3 channels corresponding to the RGB channels.
+    Both output layers are then concatenated to give an output of 16 channels.
 
-        self._conv1 = layers.ConvBN(
+    :param inputs(Tensor): A 4D tensor of shape [batch_size, height, width, channels]
+    :return net_concatenated(Tensor): a 4D Tensor of new shape [batch_size, height, width, channels]
+    '''
+
+    def __init__(self):
+        super().__init__()
+
+        self.conv_3x3_BN = layers.ConvBN(
             3, 13, kernel_size=3, stride=2, padding=1, bias_attr=False)
-        self._relu = layers.Activation("relu")
-        self._prelu = layers.Activation("prelu")
-        self._pool = MaxPool2D(kernel_size=2, stride=2, padding="SAME")
+        self.pool = MaxPool2D(kernel_size=2, stride=2, padding="SAME")
+        self.prelu = layers.Activation("prelu")
 
-    def prelu(self, x, decoder=False):
-        if decoder:
-            return self._relu(x)
-        return self._prelu(x)
-
-    def initial_block(self, input):
-        net_conv = self._conv1(input)
+    def forward(self, x):
+        # Convolutional branch
+        net_conv = self.conv_3x3_BN(x)
         net_conv = self.prelu(net_conv)
-        net_pool = self._pool(input)
+
+        # Max pool branch
+        net_pool = self.pool(x)
+
+        # Concatenated output - does it matter max pool comes first or conv comes first? probably not.
         net_concatenated = paddle.concat([net_conv, net_pool], axis=1)
         return net_concatenated
 
-    def ENet_stage1(self, inputs, name_scope='stage1_block'):
-        net, inputs_shape_1 = bottleneck(
+
+class ENet_stage1(nn.Layer):
+    def __init__(self, name_scope='stage1_block'):
+        super().__init__()
+        self.bottleneck1_0 = bottleneck(
             output_depth=64,
             filter_size=3,
             regularizer_prob=0.01,
             type=DOWNSAMPLING,
-            name_scope=name_scope + '/bottleneck1_0')(inputs)
-
-        net = bottleneck(
+            name_scope=name_scope + '/bottleneck1_0')
+        self.bottleneck1_1 = bottleneck(
             output_depth=64,
             filter_size=3,
             regularizer_prob=0.01,
-            name_scope=name_scope + '/bottleneck1_1')(net)
+            name_scope=name_scope + '/bottleneck1_1')
 
-        net = bottleneck(
+        self.bottleneck1_2 = bottleneck(
             output_depth=64,
             filter_size=3,
             regularizer_prob=0.01,
-            name_scope=name_scope + '/bottleneck1_2')(net)
+            name_scope=name_scope + '/bottleneck1_2')
 
-        net = bottleneck(
+        self.bottleneck1_3 = bottleneck(
             output_depth=64,
             filter_size=3,
             regularizer_prob=0.01,
-            name_scope=name_scope + '/bottleneck1_3')(net)
+            name_scope=name_scope + '/bottleneck1_3')
 
-        net = bottleneck(
+        self.bottleneck1_4 = bottleneck(
             output_depth=64,
             filter_size=3,
             regularizer_prob=0.01,
-            name_scope=name_scope + '/bottleneck1_4')(net)
+            name_scope=name_scope + '/bottleneck1_4')
 
+    def forward(self, inputs):
+        net, inputs_shape_1 = self.bottleneck1_0(inputs)
+        net = self.bottleneck1_1(net)
+        net = self.bottleneck1_2(net)
+        net = self.bottleneck1_3(net)
+        net = self.bottleneck1_4(net)
         return net, inputs_shape_1
 
-    def ENet_stage2(self, inputs, name_scope='stage2_block'):
-        net, inputs_shape_2 = bottleneck(
+
+class ENet_stage2(nn.Layer):
+    def __init__(self, name_scope='stage2_block'):
+        super().__init__()
+        self.bottleneck2_0 = bottleneck(
             output_depth=128,
             filter_size=3,
             regularizer_prob=0.1,
             type=DOWNSAMPLING,
-            name_scope=name_scope + '/bottleneck2_0')(inputs)
+            name_scope=name_scope + '/bottleneck2_0')
 
+        self.block_list = []
         for i in range(2):
-            net = bottleneck(
+            block_name = bottleneck(
                 output_depth=128,
                 filter_size=3,
                 regularizer_prob=0.1,
                 name_scope=name_scope + '/bottleneck2_{}'.format(
-                    str(4 * i + 1)))(net)
+                    str(4 * i + 1)))
+            self.block_list.append(block_name)
 
-            net = bottleneck(
+            block_name = bottleneck(
                 output_depth=128,
                 filter_size=3,
                 regularizer_prob=0.1,
                 type=DILATED,
                 dilation_rate=(2**(2 * i + 1)),
                 name_scope=name_scope + '/bottleneck2_{}'.format(
-                    str(4 * i + 2)))(net)
+                    str(4 * i + 2)))
+            self.block_list.append(block_name)
 
-            net = bottleneck(
+            block_name = bottleneck(
                 output_depth=128,
                 filter_size=5,
                 regularizer_prob=0.1,
                 type=ASYMMETRIC,
                 name_scope=name_scope + '/bottleneck2_{}'.format(
-                    str(4 * i + 3)))(net)
+                    str(4 * i + 3)))
+            self.block_list.append(block_name)
 
-            net = bottleneck(
+            block_name = bottleneck(
                 output_depth=128,
                 filter_size=3,
                 regularizer_prob=0.1,
                 type=DILATED,
                 dilation_rate=(2**(2 * i + 2)),
                 name_scope=name_scope + '/bottleneck2_{}'.format(
-                    str(4 * i + 4)))(net)
+                    str(4 * i + 4)))
+            self.block_list.append(block_name)
 
+    def forward(self, inputs):
+        net, inputs_shape_2 = self.bottleneck2_0(inputs)
+
+        for i in range(2):
+            net = self.block_list[4 * i + 0](net)
+            net = self.block_list[4 * i + 1](net)
+            net = self.block_list[4 * i + 2](net)
+            net = self.block_list[4 * i + 3](net)
         return net, inputs_shape_2
 
-    def ENet_stage3(self, inputs, name_scope='stage3_block'):
+
+class ENet_stage3(nn.Layer):
+    def __init__(self, name_scope='stage3_block'):
+        super().__init__()
+
+        self.block_list = []
         for i in range(2):
-            net = bottleneck(
+            block_name = bottleneck(
                 output_depth=128,
                 filter_size=3,
                 regularizer_prob=0.1,
                 name_scope=name_scope + '/bottleneck3_{}'.format(
-                    str(4 * i + 0)))(inputs)
-            net = bottleneck(
+                    str(4 * i + 0)))
+            self.block_list.append(block_name)
+
+            block_name = bottleneck(
                 output_depth=128,
                 filter_size=3,
                 regularizer_prob=0.1,
                 type=DILATED,
                 dilation_rate=(2**(2 * i + 1)),
                 name_scope=name_scope + '/bottleneck3_{}'.format(
-                    str(4 * i + 1)))(net)
-            net = bottleneck(
+                    str(4 * i + 1)))
+            self.block_list.append(block_name)
+
+            block_name = bottleneck(
                 output_depth=128,
                 filter_size=5,
                 regularizer_prob=0.1,
                 type=ASYMMETRIC,
                 name_scope=name_scope + '/bottleneck3_{}'.format(
-                    str(4 * i + 2)))(net)
-            net = bottleneck(
+                    str(4 * i + 2)))
+            self.block_list.append(block_name)
+
+            block_name = bottleneck(
                 output_depth=128,
                 filter_size=3,
                 regularizer_prob=0.1,
                 type=DILATED,
                 dilation_rate=(2**(2 * i + 2)),
                 name_scope=name_scope + '/bottleneck3_{}'.format(
-                    str(4 * i + 3)))(net)
+                    str(4 * i + 3)))
+            self.block_list.append(block_name)
 
-            return net
+    def forward(self, inputs):
+        net = inputs
+        for i in range(2):
+            net = self.block_list[4 * i + 0](net)
+            net = self.block_list[4 * i + 1](net)
+            net = self.block_list[4 * i + 2](net)
+            net = self.block_list[4 * i + 3](net)
+        return net
 
-    def ENet_stage4(self,
-                    inputs,
-                    inputs_shape,
-                    connect_tensor,
-                    skip_connections=True,
-                    name_scope='stage4_block'):
-        net = bottleneck(
+
+class ENet_stage4(nn.Layer):
+    def __init__(self,
+                 inputs_shape=None,
+                 skip_connections=True,
+                 name_scope='stage4_block'):
+        super().__init__()
+        self.skip_connections = skip_connections
+        self.bottleneck4_0 = bottleneck(
             output_depth=64,
             filter_size=3,
             regularizer_prob=0.1,
             type=UPSAMPLING,
             decoder=True,
             output_shape=inputs_shape,
-            name_scope=name_scope + '/bottleneck4_0')(inputs)
-        if skip_connections:
+            name_scope=name_scope + '/bottleneck4_0')
+
+        self.bottleneck4_1 = bottleneck(
+            output_depth=64,
+            filter_size=3,
+            regularizer_prob=0.1,
+            decoder=True,
+            name_scope=name_scope + '/bottleneck4_1')
+
+        self.bottleneck4_2 = bottleneck(
+            output_depth=64,
+            filter_size=3,
+            regularizer_prob=0.1,
+            decoder=True,
+            name_scope=name_scope + '/bottleneck4_2')
+
+    def forward(self, inputs, inputs_shape, connect_tensor):
+        net = self.bottleneck4_0(inputs, output_shape=inputs_shape)
+        if self.skip_connections:
             net = net + connect_tensor
+        net = self.bottleneck4_1(net)
+        net = self.bottleneck4_2(net)
 
-        net = bottleneck(
-            output_depth=64,
-            filter_size=3,
-            regularizer_prob=0.1,
-            decoder=True,
-            name_scope=name_scope + '/bottleneck4_1')(net)
-
-        net = bottleneck(
-            output_depth=64,
-            filter_size=3,
-            regularizer_prob=0.1,
-            decoder=True,
-            name_scope=name_scope + '/bottleneck4_2')(net)
         return net
 
-    def ENet_stage5(self,
-                    inputs,
-                    inputs_shape,
-                    connect_tensor,
-                    skip_connections=True,
-                    name_scope='stage5_block'):
-        net = bottleneck(
+
+class ENet_stage5(nn.Layer):
+    def __init__(self,
+                 inputs_shape=None,
+                 skip_connections=True,
+                 name_scope='stage5_block'):
+        super().__init__()
+        self.skip_connections = skip_connections
+        self.bottleneck5_0 = bottleneck(
             output_depth=16,
             filter_size=3,
             regularizer_prob=0.1,
             type=UPSAMPLING,
             decoder=True,
             output_shape=inputs_shape,
-            name_scope=name_scope + '/bottleneck5_0')(inputs)
+            name_scope=name_scope + '/bottleneck5_0')
 
-        if skip_connections:
-            net = net + connect_tensor
-
-        net = bottleneck(
+        self.bottleneck5_1 = bottleneck(
             output_depth=16,
             filter_size=3,
             regularizer_prob=0.1,
             decoder=True,
-            name_scope=name_scope + '/bottleneck5_1')(net)
+            name_scope=name_scope + '/bottleneck5_1')
+
+    def forward(self, inputs, inputs_shape, connect_tensor):
+        net = self.bottleneck5_0(inputs, output_shape=inputs_shape)
+        if self.skip_connections:
+            net = net + connect_tensor
+        net = self.bottleneck5_1(net)
         return net
 
-    def decoder(self, input, num_classes):
+
+class ENet(nn.Layer):
+    def __init__(self, pretrained=None):
+        super(ENet, self).__init__()
+        self.pretrained = pretrained
+        self._relu = layers.Activation("relu")
+        self._prelu = layers.Activation("prelu")
+        self._initial_block = Initial_Block()
+        self._enet_stage1 = ENet_stage1(name_scope="LaneNetBase")
+        self._enet_stage2 = ENet_stage2(name_scope="LaneNetBase")
+        self._enetSeg_stage3 = ENet_stage3(name_scope="LaneNetSeg")
+        self._enetSeg_stage4 = ENet_stage4(name_scope="LaneNetSeg")
+        self._enetSeg_stage5 = ENet_stage5(name_scope="LaneNetSeg")
+        self._enetEm_stage3 = ENet_stage3(name_scope="LaneNetEm")
+        self._enetEm_stage4 = ENet_stage4(name_scope="LaneNetEm")
+        self._enetEm_stage5 = ENet_stage5(name_scope="LaneNetEm")
+
+    def prelu(self, x, decoder=False):
+        if decoder:
+            return self.relu(x)
+        return self.prelu(x)
+
+    def encoder(self, inputs):
+        initial = self._initial_block(inputs)
+        stage1, inputs_shape_1 = self._enet_stage1(initial)
+        stage2, inputs_shape_2 = self._enet_stage2(stage1)
+        output = (initial, stage1, stage2, inputs_shape_1, inputs_shape_2)
+        return output
+
+    def decoder(self, input):
         initial, stage1, stage2, inputs_shape_1, inputs_shape_2 = input
-        segStage3 = self.ENet_stage3(stage2, name_scope='LaneNetSeg')
-        segStage4 = self.ENet_stage4(
-            segStage3, inputs_shape_2, stage1, name_scope='LaneNetSeg')
-        segStage5 = self.ENet_stage5(
-            segStage4, inputs_shape_1, initial, name_scope='LaneNetSeg')
+
+        segStage3 = self._enetSeg_stage3(stage2)
+        # upsampling
+        segStage4 = self._enetSeg_stage4(segStage3, inputs_shape_2, stage1)
+        segStage5 = self._enetSeg_stage5(segStage4, inputs_shape_1, initial)
 
         segLogits = nn.Conv2DTranspose(
-            segStage5.shape[1],
-            num_classes,
-            kernel_size=2,
-            stride=2,
+            segStage5.shape[1], 2, kernel_size=2, stride=2,
             padding="SAME")(segStage5)
 
-        emStage3 = self.ENet_stage3(stage2, name_scope='LaneNetEm')
-        emStage4 = self.ENet_stage4(
-            emStage3, inputs_shape_2, stage1, name_scope='LaneNetEm')
-        emStage5 = self.ENet_stage5(
-            emStage4, inputs_shape_1, initial, name_scope='LaneNetEm')
+        emStage3 = self._enetEm_stage3(stage2)
+        # upsampling
+        emStage4 = self._enetEm_stage4(emStage3, inputs_shape_2, stage1)
+        emStage5 = self._enetEm_stage5(emStage4, inputs_shape_1, initial)
 
         emLogits = nn.Conv2DTranspose(
             emStage5.shape[1], 4, kernel_size=2, stride=2,
@@ -564,14 +654,8 @@ class ENet(nn.Layer):
         return segLogits, emLogits
 
     def forward(self, inputs):
-        initial = self.initial_block(inputs)
-        stage1, inputs_shape_1 = self.ENet_stage1(
-            initial, name_scope='LaneNetBase')
-        stage2, inputs_shape_2 = self.ENet_stage2(
-            stage1, name_scope='LaneNetBase')
-        output = (initial, stage1, stage2, inputs_shape_1, inputs_shape_2)
-
-        segLogits, emLogits = self.decoder(output, 2)
+        output = self.encoder(inputs)
+        segLogits, emLogits = self.decoder(output)
         return segLogits, emLogits
 
 
