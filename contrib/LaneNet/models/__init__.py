@@ -16,3 +16,4 @@ from .lanenet_enet import LaneEnet
 from .lanenet_bisenet import LaneBiseNet
 from .lanenet_fcn import LaneFCN
 from .vgg import *
+from .fcn import *
