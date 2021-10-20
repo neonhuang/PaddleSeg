@@ -43,23 +43,10 @@ class LaneBiseNet(nn.Layer):
             lambd=lambd,
             align_corners=align_corners,
             pretrained=pretrained)
-        self.pretrained = pretrained
-        self.init_weight()
 
     def forward(self, x):
         logit_list = self.bisenet(x)
         return logit_list
-
-    def init_weight(self):
-        if self.pretrained is not None:
-            utils.load_entire_model(self, self.pretrained)
-        else:
-            for sublayer in self.sublayers():
-                if isinstance(sublayer, nn.Conv2D):
-                    param_init.kaiming_normal_init(sublayer.weight)
-                elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
-                    param_init.constant_init(sublayer.weight, value=1.0)
-                    param_init.constant_init(sublayer.bias, value=0.0)
 
 
 class BiSeNetV2(nn.Layer):
@@ -100,6 +87,17 @@ class BiSeNetV2(nn.Layer):
         self.pretrained = pretrained
         self.init_weight()
 
+    def init_weight(self):
+        if self.pretrained is not None:
+            utils.load_entire_model(self, self.pretrained)
+        else:
+            for sublayer in self.sublayers():
+                if isinstance(sublayer, nn.Conv2D):
+                    param_init.kaiming_normal_init(sublayer.weight)
+                elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
+                    param_init.constant_init(sublayer.weight, value=1.0)
+                    param_init.constant_init(sublayer.bias, value=0.0)
+
     def encoder(self, x):
         dfm = self.db(x)
         _, _, _, _, sfm = self.sb(x)
@@ -128,17 +126,6 @@ class BiSeNetV2(nn.Layer):
         output = self.encoder(x)
         segLogits, emLogits = self.decoder(output, paddle.shape(x)[2:])
         return segLogits, emLogits
-
-    def init_weight(self):
-        if self.pretrained is not None:
-            utils.load_entire_model(self, self.pretrained)
-        else:
-            for sublayer in self.sublayers():
-                if isinstance(sublayer, nn.Conv2D):
-                    param_init.kaiming_normal_init(sublayer.weight)
-                elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
-                    param_init.constant_init(sublayer.weight, value=1.0)
-                    param_init.constant_init(sublayer.bias, value=0.0)
 
 
 class StemBlock(nn.Layer):

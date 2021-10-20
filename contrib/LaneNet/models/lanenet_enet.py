@@ -36,25 +36,11 @@ class LaneEnet(nn.Layer):
             num_classes,  # 相互独立的目标类别的数量。
             pretrained=None):  # 预训练模型的url或path。 默认:None
         super().__init__()
-
         self.enet = ENet(pretrained=pretrained)
-        self.pretrained = pretrained
-        self.init_weight()
 
     def forward(self, x):
         logit_list = self.enet(x)
         return logit_list
-
-    def init_weight(self):
-        if self.pretrained is not None:
-            utils.load_entire_model(self, self.pretrained)
-        else:
-            for sublayer in self.sublayers():
-                if isinstance(sublayer, nn.Conv2D):
-                    param_init.kaiming_normal_init(sublayer.weight)
-                elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
-                    param_init.constant_init(sublayer.weight, value=1.0)
-                    param_init.constant_init(sublayer.bias, value=0.0)
 
 
 class ENet(nn.Layer):
@@ -72,6 +58,20 @@ class ENet(nn.Layer):
         self._enetEm_stage3 = ENet_stage3(name_scope="LaneNetEm")
         self._enetEm_stage4 = ENet_stage4(name_scope="LaneNetEm")
         self._enetEm_stage5 = ENet_stage5(name_scope="LaneNetEm")
+
+        self.pretrained = pretrained
+        self.init_weight()
+
+    def init_weight(self):
+        if self.pretrained is not None:
+            utils.load_entire_model(self, self.pretrained)
+        else:
+            for sublayer in self.sublayers():
+                if isinstance(sublayer, nn.Conv2D):
+                    param_init.kaiming_normal_init(sublayer.weight)
+                elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
+                    param_init.constant_init(sublayer.weight, value=1.0)
+                    param_init.constant_init(sublayer.bias, value=0.0)
 
     def prelu(self, x, decoder=False):
         if decoder:

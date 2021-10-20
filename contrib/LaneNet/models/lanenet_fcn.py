@@ -35,13 +35,29 @@ class LaneFCN(nn.Layer):
         super().__init__()
 
         self.backbone = backbone
-        self.fcn = FCN(backbone)
-        self.pretrained = pretrained
-        self.init_weight()
+        self.fcn = FCN(backbone, pretrained)
 
     def forward(self, x):
         logit_list = self.fcn(x)
         return logit_list
+
+
+class FCN(nn.Layer):
+    def __init__(self, backbone, pretrained=None):
+        super().__init__()
+        self.backbone = backbone
+        if backbone is None:
+            raise Exception("LaneNet fcn need backbone, but received None")
+
+        self.deconv1 = nn.Conv2DTranspose(
+            64, 64, kernel_size=4, stride=2, padding="SAME")
+        self.deconv2 = nn.Conv2DTranspose(
+            64, 64, kernel_size=16, stride=8, padding="SAME")
+        self.conv1x1 = nn.Conv2D(64, 2, 1, 1)
+        self.conv1x2 = nn.Conv2D(64, 4, 1, 1)
+
+        self.pretrained = pretrained
+        self.init_weight()
 
     def init_weight(self):
         if self.pretrained is not None:
@@ -53,18 +69,6 @@ class LaneFCN(nn.Layer):
                 elif isinstance(sublayer, (nn.BatchNorm, nn.SyncBatchNorm)):
                     param_init.constant_init(sublayer.weight, value=1.0)
                     param_init.constant_init(sublayer.bias, value=0.0)
-
-
-class FCN(nn.Layer):
-    def __init__(self, backbone):
-        super().__init__()
-        self.backbone = backbone
-        self.deconv1 = nn.Conv2DTranspose(
-            64, 64, kernel_size=4, stride=2, padding="SAME")
-        self.deconv2 = nn.Conv2DTranspose(
-            64, 64, kernel_size=16, stride=8, padding="SAME")
-        self.conv1x1 = nn.Conv2D(64, 2, 1, 1)
-        self.conv1x2 = nn.Conv2D(64, 4, 1, 1)
 
     def encoder(self, x):
         x3, x4, x5 = self.backbone(x)
@@ -97,5 +101,4 @@ class FCN(nn.Layer):
     def forward(self, x):
         output = self.encoder(x)
         segLogits, emLogits = self.decoder(output)
-        logit_list = [segLogits, emLogits]
-        return logit_list
+        return segLogits, emLogits
