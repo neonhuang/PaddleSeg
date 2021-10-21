@@ -146,10 +146,9 @@ class FCNHead(nn.Layer):
         x = feat_list[self.backbone_indices[0]]
         x0 = self.conv_1(x)
         x1 = self.conv_2(x)
-        seg_logit = self.cls(x0)
-        em_logit = self.clsEm(x1)
-        # logit_list.append(logit)
-        return seg_logit, em_logit  # logit_list
+        seg_logit = self.cls(x0)  # 语义分割分支 2类
+        em_logit = self.clsEm(x1)  # 实例分割分支 4类
+        return seg_logit, em_logit
 
     def init_weight(self):
         for layer in self.sublayers():

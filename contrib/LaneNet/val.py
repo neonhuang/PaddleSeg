@@ -19,7 +19,7 @@ from paddleseg.cvlibs import manager, Config
 from core import evaluate
 from paddleseg.utils import get_sys_env, logger, config_check, utils
 from datasets import lane_seg
-from models import lanenet
+from models import *
 
 
 def parse_args():
