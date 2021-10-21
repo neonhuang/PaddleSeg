@@ -120,6 +120,12 @@ class FCNHead(nn.Layer):
             kernel_size=1,
             stride=1,
             bias_attr=bias)
+        self.conv_2 = layers.ConvBNReLU(
+            in_channels=backbone_channels[0],
+            out_channels=channels,
+            kernel_size=1,
+            stride=1,
+            bias_attr=bias)
         self.cls = nn.Conv2D(
             in_channels=channels,
             out_channels=self.num_classes,
@@ -138,11 +144,12 @@ class FCNHead(nn.Layer):
     def forward(self, feat_list):
         logit_list = []
         x = feat_list[self.backbone_indices[0]]
-        x = self.conv_1(x)
-        seg_logit = self.cls(x)
-        em_logit = self.clsEm(x)
+        x0 = self.conv_1(x)
+        x1 = self.conv_2(x)
+        seg_logit = self.cls(x0)
+        em_logit = self.clsEm(x1)
         # logit_list.append(logit)
-        return seg_logit, em_logit  #logit_list
+        return seg_logit, em_logit  # logit_list
 
     def init_weight(self):
         for layer in self.sublayers():
