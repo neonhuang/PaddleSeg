@@ -18,7 +18,7 @@ import paddle
 
 from paddleseg.utils import metrics, TimeAverager, calculate_eta, logger, progbar
 from . import infer
-from utils import compute_metric_lane, compute_metric
+from utils import *
 
 np.set_printoptions(suppress=True)
 
@@ -36,6 +36,9 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
     Returns:
         float: The mIoU of validation datasets.
         float: The accuracy of validation datasets.
+        float: The lane acc of validation datasets.
+        float: The lane fn of validation datasets.
+        float: The lane fp of validation datasets.
     """
     model.eval()
     nranks = paddle.distributed.ParallelEnv().nranks
@@ -103,14 +106,14 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
                 intersect_area_list = []
                 pred_area_list = []
                 label_area_list = []
-                acc_lane_list = []
-                fp_lane_list = []
-                fn_lane_list = []
                 paddle.distributed.all_gather(intersect_area_list,
                                               intersect_area)
                 paddle.distributed.all_gather(pred_area_list, pred_area)
                 paddle.distributed.all_gather(label_area_list, label_area)
 
+                acc_lane_list = []
+                fp_lane_list = []
+                fn_lane_list = []
                 paddle.distributed.all_gather(acc_lane_list, acc_lane)
                 paddle.distributed.all_gather(fp_lane_list, fp_lane)
                 paddle.distributed.all_gather(fn_lane_list, fn_lane)

@@ -135,7 +135,29 @@ python train.py \
        --use_vdl \
        --save_interval 500 \
        --save_dir output
+```
+多卡训练
 
+```shell
+export CUDA_VISIBLE_DEVICES=0,1 # 设置2张可用的卡
+python -m paddle.distributed.launch train.py \
+       --config configs/lanenet.yml \
+       --do_eval \
+       --use_vdl \
+       --save_interval 500 \
+       --save_dir output
+```
+
+恢复训练
+
+```shell
+python train.py \
+       --config configs/lanenet.yml \
+       --resume_model output/iter_20000 \
+       --do_eval \
+       --use_vdl \
+       --save_interval 500 \
+       --save_dir output
 ```
 
 ## 四. 进行评估
