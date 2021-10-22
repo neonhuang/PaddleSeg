@@ -93,6 +93,11 @@ class HarDNet(nn.Layer):
             out_channels=num_classes,
             kernel_size=1)
 
+        self.em_cls_head = nn.Conv2D(
+            in_channels=self.decoder.get_out_channels(),
+            out_channels=4,
+            kernel_size=1)
+
         self.init_weight()
 
     def forward(self, x):
@@ -100,13 +105,23 @@ class HarDNet(nn.Layer):
         x = self.stem(x)
         x, skip_connections = self.encoder(x)
         x = self.decoder(x, skip_connections)
-        logit = self.cls_head(x)
-        logit = F.interpolate(
-            logit,
-            size=input_shape,
-            mode="bilinear",
-            align_corners=self.align_corners)
-        return [logit]
+        seg_logit = self.cls_head(x)
+        em_logit = self.em_cls_head(x)
+        logit_list = [seg_logit, em_logit]
+        logit_list = [
+            F.interpolate(
+                logit,
+                input_shape,
+                mode='bilinear',
+                align_corners=self.align_corners) for logit in logit_list
+        ]
+        return logit_list
+        # logit = F.interpolate(
+        #     logit,
+        #     size=input_shape,
+        #     mode="bilinear",
+        #     align_corners=self.align_corners)
+        # return [logit]
 
     def init_weight(self):
         if self.pretrained is not None:

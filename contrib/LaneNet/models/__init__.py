@@ -18,3 +18,4 @@ from .lanenet_fcn import LaneFCN
 from .vgg import *
 from .fcn import *
 from .fast_scnn import *
+from .hardnet import *
