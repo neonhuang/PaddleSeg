@@ -132,6 +132,7 @@ def train(
     avg_loss_list = []
     iters_per_epoch = len(batch_sampler)
     best_mean_iou = -1.0
+    best_acc_lane = -1.0
     best_model_iter = -1
 
     reader_cost_averager = TimeAverager()
@@ -274,16 +275,16 @@ def train(
                     shutil.rmtree(model_to_remove)
 
                 if val_dataset is not None:
-                    if mean_iou > best_mean_iou:
-                        best_mean_iou = mean_iou
+                    if acc_lane > best_acc_lane:
+                        best_acc_lane = acc_lane
                         best_model_iter = iter
                         best_model_dir = os.path.join(save_dir, "best_model")
                         paddle.save(
                             model.state_dict(),
                             os.path.join(best_model_dir, 'model.pdparams'))
                     logger.info(
-                        '[EVAL] The model with the best validation mIoU ({:.4f}) was saved at iter {}.'
-                        .format(best_mean_iou, best_model_iter))
+                        '[EVAL] The model with the best validation acc_lane ({:.4f}) was saved at iter {}.'
+                        .format(best_acc_lane, best_model_iter))
 
                     if use_vdl:
                         log_writer.add_scalar('Evaluate/Avg_acc_lane', acc_lane,
