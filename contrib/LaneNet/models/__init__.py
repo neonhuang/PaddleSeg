@@ -20,3 +20,4 @@ from .fcn import *
 from .fast_scnn import *
 from .hardnet import *
 from .unet import *
+from .bisenet import *
