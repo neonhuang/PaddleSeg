@@ -6,7 +6,7 @@ train_dataset:
   dataset_root: ./data/tusimple_lane_detection/
   transforms:
     - type: Resize
-      target_size: [544, 288]
+      target_size: [548, 292]
     - type: RandomDistort
       brightness_range: 0.25
       brightness_prob: 1
@@ -19,6 +19,10 @@ train_dataset:
     - type: RandomHorizontalFlip
     - type: RandomPaddingCrop
       crop_size: [512, 256]
+    - type: RandomBlur
+      prob: 0.5
+      blur_type: random
+    - type: RandomNoise
     - type: Normalize
 
   mode: train
