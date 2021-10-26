@@ -177,7 +177,7 @@ def evaluation(model, model_path, transforms, root_dir=None):
                             ret = int(minE + (maxE - minE) / 2)
                             row_result.append(ret)
                     json_pred[i]['lanes'].append(row_result)
-                    json_pred[i]['run_time'] = inference_time
+                    json_pred[i]['run_time'] = inference_time * 1000
                     all_time_inference.append(inference_time)
                     all_time_clustering.append(cluster_time)
             progbar_pred.update(i + 1)
@@ -190,8 +190,9 @@ def evaluation(model, model_path, transforms, root_dir=None):
             format(inference_avg * 1000, cluster_avg * 1000,
                    (cluster_avg + inference_avg) * 1000))
 
-        logger.info("Inference speed: {:.3f} clustering speed: {:.3f} ".format(
-            1 / inference_avg, 1 / cluster_avg))
+        logger.info(
+            "Inference speed: {:.2f}fps clustering speed: {:.2f}fps ".format(
+                1 / inference_avg, 1 / cluster_avg))
 
         with open(pred_save_path, 'w') as f:
             for res in json_pred:

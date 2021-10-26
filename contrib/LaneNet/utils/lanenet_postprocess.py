@@ -146,7 +146,7 @@ class _LaneNetCluster(object):
         """
         dbscan cluster
         """
-        db = DBSCAN(eps=0.4, min_samples=500)
+        db = DBSCAN(eps=0.5, min_samples=400)
 
         try:
             features = StandardScaler().fit_transform(embedding_image_feats)
