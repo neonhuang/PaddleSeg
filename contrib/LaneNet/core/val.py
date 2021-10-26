@@ -18,7 +18,7 @@ import paddle
 
 from paddleseg.utils import metrics, TimeAverager, calculate_eta, logger, progbar
 from . import infer
-from utils import *
+from utils.metrics_utils import *
 
 np.set_printoptions(suppress=True)
 
