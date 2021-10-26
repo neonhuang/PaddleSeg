@@ -27,8 +27,8 @@ import numpy as np
 import cv2
 import time
 import os
-from tqdm import tqdm
 from utils.lane import LaneEval
+import math
 
 
 def parse_args():
@@ -84,21 +84,35 @@ def main(args):
         root_dir=args.root)
 
 
+def partition_list(arr, m):
+    """split the list 'arr' into m pieces"""
+    n = int(math.ceil(len(arr) / float(m)))
+    return [arr[i:i + n] for i in range(0, len(arr), n)]
+
+
 def evaluation(model, model_path, transforms, root_dir=None):
     utils.utils.load_entire_model(model, model_path)
     model.eval()
+    nranks = paddle.distributed.get_world_size()
+    local_rank = paddle.distributed.get_rank()
 
     pred_path = os.path.join(root_dir, 'test_tasks_0627.json')
     pred_save_path = os.path.join(root_dir, 'pred.json')
     gt_path = os.path.join(root_dir, 'test_label.json')
 
     json_pred = [json.loads(line) for line in open(pred_path).readlines()]
+    if nranks > 1:
+        json_lists = partition_list(json_pred, nranks)
+    else:
+        json_lists = [json_pred]
+
     postprocessor = lanenet_postprocess.LaneNetPostProcessor()
     logger.info("Start to process...")
+    progbar_pred = progbar.Progbar(target=len(json_lists[0]), verbose=1)
     with paddle.no_grad():
-        all_time_forward = []
+        all_time_inference = []
         all_time_clustering = []
-        for i, sample in enumerate(tqdm(json_pred)):
+        for i, sample in enumerate(json_lists[local_rank]):
             h_samples = sample['h_samples']
             raw_file = sample['raw_file']
             im_path = ops.join(root_dir, raw_file)
@@ -120,10 +134,6 @@ def evaluation(model, model_path, transforms, root_dir=None):
                 transforms=transforms.transforms)
             time_end = time.time()
 
-            inference_time = time_end - time_start
-            logger.info("net inference time: {:.3f}ms ".format(
-                inference_time * 1000))
-
             segLogits = paddle.squeeze(pred[0])
             emLogits = paddle.squeeze(pred[1])
 
@@ -137,8 +147,12 @@ def evaluation(model, model_path, transforms, root_dir=None):
             _, _, cluster_result = postprocessor.get_cluster_result(
                 binary_seg_image, instance_seg_image)
             clu_end = time.time()
+
             cluster_time = clu_end - clu_start
-            logger.info("cluster time: {:.3f}ms ".format(cluster_time * 1000))
+            inference_time = time_end - time_start
+            print("\n")
+            logger.info("Inference time: {:.3f} cluster time: {:.3f} ".format(
+                inference_time * 1000, cluster_time * 1000))
 
             cluster_result = cv2.resize(
                 cluster_result,
@@ -164,23 +178,20 @@ def evaluation(model, model_path, transforms, root_dir=None):
                             row_result.append(ret)
                     json_pred[i]['lanes'].append(row_result)
                     json_pred[i]['run_time'] = inference_time
-                    all_time_forward.append(inference_time)
+                    all_time_inference.append(inference_time)
                     all_time_clustering.append(cluster_time)
+            progbar_pred.update(i + 1)
 
-        forward_avg = np.sum(all_time_forward[500:2000]) / 1500
-        cluster_avg = np.sum(all_time_clustering[500:2000]) / 1500
+        inference_avg = np.sum(all_time_inference[500:2500]) / 2000
+        cluster_avg = np.sum(all_time_clustering[500:2500]) / 2000
 
-        logger.info('The Inference time for one image is: {:.3f}ms'.format(
-            forward_avg * 1000))
-        logger.info('The Clustering time for one image is: {:.3f}ms'.format(
-            cluster_avg * 1000))
-        logger.info('The total time for one image is: {:.3f}ms'.format(
-            (cluster_avg + forward_avg) * 1000))
+        logger.info(
+            "inference_avg: {:.3f} cluster_avg: {:.3f} total time: {:.3f} ".
+            format(inference_avg * 1000, cluster_avg * 1000,
+                   (cluster_avg + inference_avg) * 1000))
 
-        logger.info('The speed for Inference pass is: {:.3f}fps'.format(
-            1 / forward_avg))
-        logger.info('The speed for clustering pass is: {:.3f}fps'.format(
-            1 / cluster_avg))
+        logger.info("Inference speed: {:.3f} clustering speed: {:.3f} ".format(
+            1 / inference_avg, 1 / cluster_avg))
 
         with open(pred_save_path, 'w') as f:
             for res in json_pred:
