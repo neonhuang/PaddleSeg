@@ -13,9 +13,9 @@
 # limitations under the License.
 
 import os
-import math
 
 import matplotlib
+
 matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
@@ -28,36 +28,7 @@ from paddleseg import utils
 from . import infer
 from utils import lanenet_postprocess
 from paddleseg.utils import logger, progbar
-
-
-def makedirs(directory):
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-
-def partition_list(arr, m):
-    """split the list 'arr' into m pieces"""
-    n = int(math.ceil(len(arr) / float(m)))
-    return [arr[i:i + n] for i in range(0, len(arr), n)]
-
-
-def to_png_fn(fn, name=""):
-    """
-    Append png as filename postfix
-    """
-    directory, filename = os.path.split(fn)
-    basename, ext = os.path.splitext(filename)
-
-    return basename + name + ".png"
-
-
-def minmax_scale(input_arr):
-    min_val = np.min(input_arr)
-    max_val = np.max(input_arr)
-
-    output_arr = (input_arr - min_val) * 255.0 / (max_val - min_val)
-
-    return output_arr
+from utils.utils import minmax_scale, to_png_fn, partition_list, makedirs
 
 
 def predict(model,
