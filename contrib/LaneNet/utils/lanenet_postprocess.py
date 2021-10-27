@@ -19,7 +19,7 @@ LaneNet model post process
 """
 import os.path as ops
 import math
-
+import os
 import cv2
 import time
 import numpy as np
@@ -146,7 +146,7 @@ class _LaneNetCluster(object):
         """
         dbscan cluster
         """
-        db = DBSCAN(eps=0.5, min_samples=400)
+        db = DBSCAN(eps=0.4, min_samples=500)
 
         try:
             features = StandardScaler().fit_transform(embedding_image_feats)
@@ -248,10 +248,12 @@ class LaneNetPostProcessor(object):
     lanenet post process for lane generation
     """
 
-    def __init__(self, ipm_remap_file_path='./utils/tusimple_ipm_remap.yml'):
+    def __init__(self):
         """
         convert front car view to bird view
         """
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        ipm_remap_file_path = os.path.join(base_dir, 'utils/tusimple_ipm_remap.yml')
         assert ops.exists(ipm_remap_file_path), '{:s} not exist'.format(
             ipm_remap_file_path)
 

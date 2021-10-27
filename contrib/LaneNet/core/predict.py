@@ -94,6 +94,7 @@ def predict(model,
         for i, im_path in enumerate(img_lists[local_rank]):
             im = cv2.imread(im_path)
             gt_image = im
+            im = im.astype('float32')
             im, _, _ = transforms(im)
             # For lane tasks, image size remains the post-processed size
             ori_shape = im.shape[1:]
