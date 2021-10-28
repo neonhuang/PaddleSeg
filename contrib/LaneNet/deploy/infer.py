@@ -32,13 +32,7 @@ from paddleseg.utils import get_sys_env, logger, get_image_list
 sys.path.append('..')
 from utils import lanenet_postprocess
 import transforms.lane_transforms as T
-from utils.utils import to_png_fn, makedirs
-
-
-def use_auto_tune(args):
-    return hasattr(PredictConfig, "collect_shape_range_info") \
-           and hasattr(PredictConfig, "enable_tuned_tensorrt_dynamic_shape") \
-           and args.device == "gpu" and args.use_trt and args.enable_auto_tune
+from utils.utils import to_png_fn
 
 
 class DeployConfig:
@@ -72,55 +66,6 @@ class DeployConfig:
         return T.LaneCompose(transforms, to_rgb=False)
 
 
-def auto_tune(args, imgs, img_nums):
-    """
-    Use images to auto tune the dynamic shape for trt sub graph.
-    The tuned shape saved in args.auto_tuned_shape_file.
-
-    Args:
-        args(dict): input args.
-        imgs(str, list[str]): the path for images.
-        img_nums(int): the nums of images used for auto tune.
-    Returns:
-        None
-    """
-    logger.info("Auto tune the dynamic shape for GPU TRT.")
-
-    assert use_auto_tune(args)
-
-    if not isinstance(imgs, (list, tuple)):
-        imgs = [imgs]
-    num = min(len(imgs), img_nums)
-
-    cfg = DeployConfig(args.cfg)
-    pred_cfg = PredictConfig(cfg.model, cfg.params)
-    pred_cfg.enable_use_gpu(100, 0)
-    if not args.print_detail:
-        pred_cfg.disable_glog_info()
-    pred_cfg.collect_shape_range_info(args.auto_tuned_shape_file)
-
-    predictor = create_predictor(pred_cfg)
-    input_names = predictor.get_input_names()
-    input_handle = predictor.get_input_handle(input_names[0])
-
-    for i in range(0, num):
-        data = np.array([cfg.transforms(imgs[i])[0]])
-        input_handle.reshape(data.shape)
-        input_handle.copy_from_cpu(data)
-        try:
-            predictor.run()
-        except:
-            logger.info(
-                "Auto tune fail. Usually, the error is out of GPU memory, "
-                "because the model and image is too large. \n")
-            del predictor
-            if os.path.exists(args.auto_tuned_shape_file):
-                os.remove(args.auto_tuned_shape_file)
-            return
-
-    logger.info("Auto tune success.\n")
-
-
 class Predictor:
     def __init__(self, args):
         """
@@ -132,33 +77,10 @@ class Predictor:
         self.cfg = DeployConfig(args.cfg)
 
         self._init_base_config()
-
-        if args.device == 'cpu':
-            self._init_cpu_config()
-        else:
-            self._init_gpu_config()
+        self._init_cpu_config()
 
         self.predictor = create_predictor(self.pred_cfg)
         self.postprocessor = lanenet_postprocess.LaneNetPostProcessor()
-
-        if hasattr(args, 'benchmark') and args.benchmark:
-            import auto_log
-            pid = os.getpid()
-            self.autolog = auto_log.AutoLogger(
-                model_name=args.model_name,
-                model_precision=args.precision,
-                batch_size=args.batch_size,
-                data_shape="dynamic",
-                save_path=None,
-                inference_config=self.pred_cfg,
-                pids=pid,
-                process_name=None,
-                gpu_ids=0,
-                time_keys=[
-                    'preprocess_time', 'inference_time', 'postprocess_time'
-                ],
-                warmup=0,
-                logger=logger)
 
     def _init_base_config(self):
         self.pred_cfg = PredictConfig(self.cfg.model, self.cfg.params)
@@ -180,48 +102,10 @@ class Predictor:
             self.pred_cfg.enable_mkldnn()
         self.pred_cfg.set_cpu_math_library_num_threads(self.args.cpu_threads)
 
-    def _init_gpu_config(self):
-        """
-        Init the config for nvidia gpu.
-        """
-        logger.info("Use GPU")
-        self.pred_cfg.enable_use_gpu(100, 0)
-        precision_map = {
-            "fp16": PrecisionType.Half,
-            "fp32": PrecisionType.Float32,
-            "int8": PrecisionType.Int8
-        }
-        precision_mode = precision_map[self.args.precision]
-
-        if self.args.use_trt:
-            logger.info("Use TRT")
-            self.pred_cfg.enable_tensorrt_engine(
-                workspace_size=1 << 30,
-                max_batch_size=1,
-                min_subgraph_size=50,
-                precision_mode=precision_mode,
-                use_static=False,
-                use_calib_mode=False)
-
-            if use_auto_tune(self.args) and \
-                    os.path.exists(self.args.auto_tuned_shape_file):
-                logger.info("Use auto tuned dynamic shape")
-                allow_build_at_runtime = True
-                self.pred_cfg.enable_tuned_tensorrt_dynamic_shape(
-                    self.args.auto_tuned_shape_file, allow_build_at_runtime)
-            else:
-                logger.info("Use manual set dynamic shape")
-                min_input_shape = {"x": [1, 3, 100, 100]}
-                max_input_shape = {"x": [1, 3, 2000, 3000]}
-                opt_input_shape = {"x": [1, 3, 512, 1024]}
-                self.pred_cfg.set_trt_dynamic_shape_info(
-                    min_input_shape, max_input_shape, opt_input_shape)
-
     def run(self, imgs):
         if not isinstance(imgs, (list, tuple)):
             imgs = [imgs]
 
-        num = len(imgs)
         input_names = self.predictor.get_input_names()
         input_handle = self.predictor.get_input_handle(input_names[0])
         output_names = self.predictor.get_output_names()
@@ -229,29 +113,23 @@ class Predictor:
         output_emb_handle = self.predictor.get_output_handle(output_names[1])
 
         args = self.args
-
         if not os.path.exists(args.save_dir):
             os.makedirs(args.save_dir)
 
-        for i in range(0, num, args.batch_size):
-            if args.benchmark:
-                self.autolog.times.start()
-            for img in imgs[i:i + args.batch_size]:
-                gt_image = cv2.imread(img)
-                data = np.array([self._preprocess(img)])
+        for i, im_path in enumerate(imgs):
+            im = cv2.imread(im_path)
+            gt_image = im
+            im = im.astype('float32')
+            im, _, _ = self.cfg.transforms(im)
+            im = im[np.newaxis, ...]
 
-            input_handle.reshape(data.shape)
-            input_handle.copy_from_cpu(data)
-            if args.benchmark:
-                self.autolog.times.stamp()
+            input_handle.reshape(im.shape)
+            input_handle.copy_from_cpu(im)
 
             self.predictor.run()
 
             seg_results = output_seg_handle.copy_to_cpu()
             emb_results = output_emb_handle.copy_to_cpu()
-            if args.benchmark:
-                self.autolog.times.stamp()
-
             seg_results = np.argmax(seg_results, axis=1)
 
             segLogits = seg_results[0]
@@ -263,32 +141,23 @@ class Predictor:
                 binary_seg_result=binary_seg_image,
                 instance_seg_result=instance_seg_image,
                 source_image=gt_image)
-            save_dir = 'output'
-            im_path = 'test'
+
             pred_binary_fn = os.path.join(
-                save_dir, to_png_fn(im_path, name='_pred_binary'))
-            pred_lane_fn = os.path.join(save_dir,
-                                        to_png_fn(im_path, name='_pred_lane'))
+                args.save_dir, to_png_fn(im_path, name='_pred_binary'))
+            pred_lane_fn = os.path.join(
+                args.save_dir, to_png_fn(im_path, name='_pred_lane'))
             pred_instance_fn = os.path.join(
-                save_dir, to_png_fn(im_path, name='_pred_instance'))
-            dirname = os.path.dirname(pred_binary_fn)
-
-            makedirs(dirname)
-            if args.benchmark:
-                self.autolog.times.end(stamp=True)
-
-            mask_image = postprocess_result['mask_image']
+                args.save_dir, to_png_fn(im_path, name='_pred_instance'))
 
             cv2.imwrite(pred_binary_fn,
                         np.array(binary_seg_image * 255).astype(np.uint8))
-            cv2.imwrite(pred_lane_fn, postprocess_result['source_image'])
-            cv2.imwrite(pred_instance_fn, mask_image)
+            cv2.imwrite(pred_lane_fn,
+                        postprocess_result['source_image'])
+            cv2.imwrite(pred_instance_fn,
+                        postprocess_result['mask_image'])
             print(pred_lane_fn, 'saved!')
 
         logger.info("Finish")
-
-    def _preprocess(self, img):
-        return self.cfg.transforms(img)[0]
 
 
 def parse_args():
@@ -318,39 +187,6 @@ def parse_args():
         type=str,
         default='./output')
     parser.add_argument(
-        '--device',
-        choices=['cpu', 'gpu'],
-        default="cpu",
-        help="Select which device to inference, defaults to gpu.")
-
-    parser.add_argument(
-        '--use_trt',
-        default=False,
-        type=eval,
-        choices=[True, False],
-        help='Whether to use Nvidia TensorRT to accelerate prediction.')
-    parser.add_argument(
-        "--precision",
-        default="fp32",
-        type=str,
-        choices=["fp32", "fp16", "int8"],
-        help='The tensorrt precision.')
-    parser.add_argument(
-        '--enable_auto_tune',
-        default=False,
-        type=eval,
-        choices=[True, False],
-        help=
-        'Whether to enable tuned dynamic shape. We uses some images to collect '
-        'the dynamic shape for trt sub graph, which avoids setting dynamic shape manually.'
-    )
-    parser.add_argument(
-        '--auto_tuned_shape_file',
-        type=str,
-        default="auto_tune_tmp.pbtxt",
-        help='The temp file to save tuned dynamic shape.')
-
-    parser.add_argument(
         '--cpu_threads',
         default=10,
         type=int,
@@ -361,31 +197,11 @@ def parse_args():
         type=eval,
         choices=[True, False],
         help='Enable to use mkldnn to speed up when using cpu.')
-
-    parser.add_argument(
-        "--benchmark",
-        type=eval,
-        default=False,
-        help=
-        "Whether to log some information about environment, model, configuration and performance."
-    )
-    parser.add_argument(
-        "--model_name",
-        default="",
-        type=str,
-        help='When `--benchmark` is True, the specified model name is displayed.'
-    )
-
     parser.add_argument(
         '--use_cpu',
         dest='use_cpu',
         help='Whether to use X86 CPU for inference. Uses GPU in default.',
         action='store_false')
-    parser.add_argument(
-        '--use_mkldnn',
-        dest='use_mkldnn',
-        help='Whether to use MKLDNN to accelerate prediction.',
-        action='store_true')
 
     parser.add_argument(
         '--print_detail',
@@ -398,20 +214,8 @@ def parse_args():
 
 def main(args):
     imgs_list, _ = get_image_list(args.image_path)
-
-    if use_auto_tune(args):
-        tune_img_nums = 10
-        auto_tune(args, imgs_list, tune_img_nums)
-
     predictor = Predictor(args)
     predictor.run(imgs_list)
-
-    if use_auto_tune(args) and \
-            os.path.exists(args.auto_tuned_shape_file):
-        os.remove(args.auto_tuned_shape_file)
-
-    if args.benchmark:
-        predictor.autolog.report()
 
 
 if __name__ == '__main__':
