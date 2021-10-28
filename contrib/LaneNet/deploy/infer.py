@@ -144,17 +144,15 @@ class Predictor:
 
             pred_binary_fn = os.path.join(
                 args.save_dir, to_png_fn(im_path, name='_pred_binary'))
-            pred_lane_fn = os.path.join(
-                args.save_dir, to_png_fn(im_path, name='_pred_lane'))
+            pred_lane_fn = os.path.join(args.save_dir,
+                                        to_png_fn(im_path, name='_pred_lane'))
             pred_instance_fn = os.path.join(
                 args.save_dir, to_png_fn(im_path, name='_pred_instance'))
 
             cv2.imwrite(pred_binary_fn,
                         np.array(binary_seg_image * 255).astype(np.uint8))
-            cv2.imwrite(pred_lane_fn,
-                        postprocess_result['source_image'])
-            cv2.imwrite(pred_instance_fn,
-                        postprocess_result['mask_image'])
+            cv2.imwrite(pred_lane_fn, postprocess_result['source_image'])
+            cv2.imwrite(pred_instance_fn, postprocess_result['mask_image'])
             print(pred_lane_fn, 'saved!')
 
         logger.info("Finish")
@@ -163,23 +161,13 @@ class Predictor:
 def parse_args():
     parser = argparse.ArgumentParser(description='Test')
     parser.add_argument(
-        "--config",
-        dest="cfg",
-        help="The config file.",
-        default=None,
-        type=str)
+        "--config", dest="cfg", help="The config file.", default=None, type=str)
     parser.add_argument(
         '--image_path',
         dest='image_path',
         help='The directory or path or file list of the images to be predicted.',
         type=str,
         default=None)
-    parser.add_argument(
-        '--batch_size',
-        dest='batch_size',
-        help='Mini batch size of one gpu or cpu.',
-        type=int,
-        default=1)
     parser.add_argument(
         '--save_dir',
         dest='save_dir',
