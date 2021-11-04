@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .lane_seg import LaneSeg
+from .lane_seg_rsa import LaneSegRsa

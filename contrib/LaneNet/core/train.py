@@ -45,6 +45,9 @@ def loss_computation(logits_list, labels, instance_labels, losses):
                 losses['coef'][i] * loss_i(logits, instance_labels))
         elif loss_name in "LaneCrossEntropyLoss":
             loss_list.append(losses['coef'][i] * loss_i(logits, labels))
+        elif loss_name in "LaneRsaBCELoss":
+            loss_list.append(
+                losses['coef'][i] * loss_i(logits, instance_labels))
         else:
             loss_list.append(losses['coef'][i] * loss_i(logits, labels))
     return loss_list
@@ -154,8 +157,7 @@ def train(
 
             images = data[0]
             labels = data[1].astype('int64')
-            instance = data[2].astype('int64')
-
+            instance = data[2]
             if hasattr(model, 'data_format') and model.data_format == 'NHWC':
                 images = images.transpose((0, 2, 3, 1))
 

@@ -157,5 +157,6 @@ class DiscriminativeLoss(nn.Layer):
         return disc_loss
 
     def forward(self, logit, label, semantic_weights=None):
+        label = label.astype('int64')
         disc_loss = self.discriminative_loss(logit, label)
         return disc_loss

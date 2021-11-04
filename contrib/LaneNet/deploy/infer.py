@@ -130,9 +130,10 @@ class Predictor:
 
             seg_results = output_seg_handle.copy_to_cpu()
             emb_results = output_emb_handle.copy_to_cpu()
-            seg_results = np.argmax(seg_results, axis=1)
+            seg_results = seg_results[0].transpose((1, 2, 0))
+            seg_results = np.argmax(seg_results, axis=2)
 
-            segLogits = seg_results[0]
+            segLogits = seg_results
             emLogits = emb_results[0]
             binary_seg_image = segLogits.astype('int64')
             instance_seg_image = emLogits.transpose((1, 2, 0))

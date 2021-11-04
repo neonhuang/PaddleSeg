@@ -14,3 +14,5 @@
 
 from .discriminative_loss import DiscriminativeLoss
 from .lane_cross_entropy_loss import LaneCrossEntropyLoss
+from .lane_rsa_bce_loss import LaneRsaBCELoss
+from .lane_rsa_cross_entropy_loss import LaneRsaCrossEntropyLoss

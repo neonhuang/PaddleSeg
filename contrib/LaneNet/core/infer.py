@@ -46,7 +46,7 @@ def inference(model, im, ori_shape=None, transforms=None):
         logit = logit.transpose((0, 3, 1, 2))
     if ori_shape is not None:
         pred = reverse_transform(logit, ori_shape, transforms, mode='bilinear')
-        pred = paddle.argmax(pred, axis=1, keepdim=True, dtype='int32')
+        # pred = paddle.argmax(pred, axis=1, keepdim=True, dtype='int32')
         return pred, logits[1]
     else:
         return logit, logits[1]

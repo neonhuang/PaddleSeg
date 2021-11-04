@@ -12,5 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lane_transforms import LaneCompose
-from .lane_transforms_rsa import LaneComposeRsa
+import paddle
+from paddle import nn
+import paddle.nn.functional as F
+import numpy as np
+
+from paddleseg.cvlibs import manager
+
+
+@manager.LOSSES.add_component
+class LaneRsaBCELoss(nn.Layer):
+    def __init__(self, ignore_index=255, data_format='NCHW'):
+        super(LaneRsaBCELoss, self).__init__()
+        self.ignore_index = ignore_index
+
+    def forward(self, logit, label, semantic_weights=None):
+        label = label.astype('float32')
+        exist = logit
+        exist_loss = 0.1 * paddle.nn.BCEWithLogitsLoss()(exist, label)
+
+        return exist_loss

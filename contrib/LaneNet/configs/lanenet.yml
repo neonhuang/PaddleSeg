@@ -54,5 +54,5 @@ loss:
   coef: [1, 1]
 
 model:
-  type: LaneBiseNet
+  type: BiSeNetV3
   pretrained: Null

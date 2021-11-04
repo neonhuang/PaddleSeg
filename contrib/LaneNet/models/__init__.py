@@ -21,4 +21,5 @@ from .fast_scnn import *
 from .hardnet import *
 from .unet import *
 from .bisenet import *
+from .bisenet_rsa import *
 from .pphumanseg_lite import *
