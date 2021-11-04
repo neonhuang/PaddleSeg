@@ -13,13 +13,6 @@
 # limitations under the License.
 
 import os
-
-import matplotlib
-
-matplotlib.use('Agg')
-
-import matplotlib.pyplot as plt
-
 import cv2
 import numpy as np
 import paddle
@@ -100,29 +93,12 @@ def predict(model,
             pred_instance_fn = os.path.join(
                 save_dir, to_png_fn(im_path, name='_pred_instance'))
             dirname = os.path.dirname(pred_binary_fn)
-
             makedirs(dirname)
-            mask_image = postprocess_result['mask_image']
-
-            for j in range(4):
-                instance_seg_image[:, :, j] = minmax_scale(
-                    instance_seg_image[:, :, j])
-            embedding_image = np.array(instance_seg_image).astype(np.uint8)
-
-            plt.figure('mask_image')
-            plt.imshow(mask_image[:, :, (2, 1, 0)])
-            plt.figure('src_image')
-            plt.imshow(gt_image[:, :, (2, 1, 0)])
-            plt.figure('instance_image')
-            plt.imshow(embedding_image[:, :, (2, 1, 0)])
-            plt.figure('binary_image')
-            plt.imshow(binary_seg_image * 255, cmap='gray')
-            plt.show()
 
             cv2.imwrite(pred_binary_fn,
                         np.array(binary_seg_image * 255).astype(np.uint8))
             cv2.imwrite(pred_lane_fn, postprocess_result['source_image'])
-            cv2.imwrite(pred_instance_fn, mask_image)
+            cv2.imwrite(pred_instance_fn, postprocess_result['mask_image'])
             print(pred_lane_fn, 'saved!')
 
             progbar_pred.update(i + 1)

@@ -24,7 +24,7 @@ from transforms import LaneComposeRsa
 
 @manager.DATASETS.add_component
 class LaneSegRsa(paddle.io.Dataset):
-    NUM_CLASSES = 2
+    NUM_CLASSES = 7
 
     def __init__(self, dataset_root=None, transforms=None, mode='train'):
         self.dataset_root = dataset_root
@@ -56,8 +56,7 @@ class LaneSegRsa(paddle.io.Dataset):
             file_path = os.path.join(self.dataset_root,
                                      'seg_label/list/test_gt.txt')
         else:
-            file_path = os.path.join(self.dataset_root,
-                                     'training/test_part.txt')
+            file_path = os.path.join(self.dataset_root, 'training/test_gt.txt')
 
         with open(file_path, 'r') as f:
             for line in f:

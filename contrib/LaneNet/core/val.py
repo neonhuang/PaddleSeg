@@ -19,7 +19,6 @@ import paddle
 from paddleseg.utils import metrics, TimeAverager, calculate_eta, logger, progbar
 from . import infer
 from utils.metrics_utils import *
-# from .TusimpleVal import *
 from . import TusimpleVal
 
 np.set_printoptions(suppress=True)
@@ -83,7 +82,7 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     with paddle.no_grad():
-        for iter, (im, label, data) in enumerate(loader):
+        for iter, (im, label) in enumerate(loader):
             reader_cost_averager.record(time.time() - batch_start)
             label = label.astype('int64')
             # For lane tasks, use the post-processed size when evaluating
@@ -95,95 +94,93 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
                 ori_shape=ori_shape,
                 transforms=eval_dataset.transforms.transforms)
 
-            postprocessor.evaluate(eval_dataset, pred, data)
-        metric_lane = postprocessor.summarize()
+            # postprocessor.evaluate(eval_dataset, pred, data)
 
-    return _, _, _, _, _, _, _, _,
+            pred = pred[0]
+            intersect_area, pred_area, label_area = metrics.calculate_area(
+                pred,
+                label,
+                eval_dataset.num_classes,
+                ignore_index=eval_dataset.ignore_index)
 
-    #         pred = pred[0]
-    #         intersect_area, pred_area, label_area = metrics.calculate_area(
-    #             pred,
-    #             label,
-    #             eval_dataset.num_classes,
-    #             ignore_index=eval_dataset.ignore_index)
-    #
-    #         # compute lane metric
-    #         acc_lane, fp_lane, fn_lane = compute_metric(pred, label)
-    #
-    #         # Gather from all ranks
-    #         if nranks > 1:
-    #             intersect_area_list = []
-    #             pred_area_list = []
-    #             label_area_list = []
-    #             paddle.distributed.all_gather(intersect_area_list,
-    #                                           intersect_area)
-    #             paddle.distributed.all_gather(pred_area_list, pred_area)
-    #             paddle.distributed.all_gather(label_area_list, label_area)
-    #
-    #             acc_lane_list = []
-    #             fp_lane_list = []
-    #             fn_lane_list = []
-    #             paddle.distributed.all_gather(acc_lane_list, acc_lane)
-    #             paddle.distributed.all_gather(fp_lane_list, fp_lane)
-    #             paddle.distributed.all_gather(fn_lane_list, fn_lane)
-    #
-    #             # Some image has been evaluated and should be eliminated in last iter
-    #             if (iter + 1) * nranks > len(eval_dataset):
-    #                 valid = len(eval_dataset) - iter * nranks
-    #                 intersect_area_list = intersect_area_list[:valid]
-    #                 pred_area_list = pred_area_list[:valid]
-    #                 label_area_list = label_area_list[:valid]
-    #
-    #                 acc_lane_list = acc_lane_list[:valid]
-    #                 fp_lane_list = fp_lane_list[:valid]
-    #                 fn_lane_list = fn_lane_list[:valid]
-    #
-    #             for i in range(len(intersect_area_list)):
-    #                 intersect_area_all = intersect_area_all + intersect_area_list[
-    #                     i]
-    #                 pred_area_all = pred_area_all + pred_area_list[i]
-    #                 label_area_all = label_area_all + label_area_list[i]
-    #
-    #             for i in range(len(acc_lane_list)):
-    #                 acc_lane_all = acc_lane_all + acc_lane_list[i]
-    #                 fp_lane_all = fp_lane_all + fp_lane_list[i]
-    #                 fn_lane_all = fn_lane_all + fn_lane_list[i]
-    #         else:
-    #             intersect_area_all = intersect_area_all + intersect_area
-    #             pred_area_all = pred_area_all + pred_area
-    #             label_area_all = label_area_all + label_area
-    #
-    #             acc_lane_all = acc_lane_all + acc_lane
-    #             fp_lane_all = fp_lane_all + fp_lane
-    #             fn_lane_all = fn_lane_all + fn_lane
-    #         batch_cost_averager.record(
-    #             time.time() - batch_start, num_samples=len(label))
-    #         batch_cost = batch_cost_averager.get_average()
-    #         reader_cost = reader_cost_averager.get_average()
-    #
-    #         if local_rank == 0 and print_detail:
-    #             progbar_val.update(iter + 1, [('batch_cost', batch_cost),
-    #                                           ('reader cost', reader_cost)])
-    #         reader_cost_averager.reset()
-    #         batch_cost_averager.reset()
-    #         batch_start = time.time()
-    #
-    # class_iou, miou = metrics.mean_iou(intersect_area_all, pred_area_all,
-    #                                    label_area_all)
-    # class_acc, acc = metrics.accuracy(intersect_area_all, pred_area_all)
-    # kappa = metrics.kappa(intersect_area_all, pred_area_all, label_area_all)
-    #
-    # acc_lane = acc_lane_all.numpy() / total_iters
-    # fp_lane = fp_lane_all.numpy() / total_iters
-    # fn_lane = fn_lane_all.numpy() / total_iters
-    #
-    # if print_detail:
-    #     logger.info(
-    #         "[EVAL] #Images: {} mIoU: {:.4f} Acc: {:.4f} Kappa: {:.4f} ".format(
-    #             len(eval_dataset), miou, acc, kappa))
-    #     logger.info("[EVAL] Class IoU: \n" + str(np.round(class_iou, 4)))
-    #     logger.info("[EVAL] Class Acc: \n" + str(np.round(class_acc, 4)))
-    #     logger.info("[EVAL] #Acc: {:.4f} Fn: {:.4f} Fp: {:.4f} ".format(
-    #         acc_lane[0], fn_lane[0], fp_lane[0]))
-    # return miou, acc, class_iou, class_acc, kappa, acc_lane[0], fn_lane[
-    #     0], fp_lane[0]
+            # compute lane metric
+            acc_lane, fp_lane, fn_lane = compute_metric(pred, label)
+
+            # Gather from all ranks
+            if nranks > 1:
+                intersect_area_list = []
+                pred_area_list = []
+                label_area_list = []
+                paddle.distributed.all_gather(intersect_area_list,
+                                              intersect_area)
+                paddle.distributed.all_gather(pred_area_list, pred_area)
+                paddle.distributed.all_gather(label_area_list, label_area)
+
+                acc_lane_list = []
+                fp_lane_list = []
+                fn_lane_list = []
+                paddle.distributed.all_gather(acc_lane_list, acc_lane)
+                paddle.distributed.all_gather(fp_lane_list, fp_lane)
+                paddle.distributed.all_gather(fn_lane_list, fn_lane)
+
+                # Some image has been evaluated and should be eliminated in last iter
+                if (iter + 1) * nranks > len(eval_dataset):
+                    valid = len(eval_dataset) - iter * nranks
+                    intersect_area_list = intersect_area_list[:valid]
+                    pred_area_list = pred_area_list[:valid]
+                    label_area_list = label_area_list[:valid]
+
+                    acc_lane_list = acc_lane_list[:valid]
+                    fp_lane_list = fp_lane_list[:valid]
+                    fn_lane_list = fn_lane_list[:valid]
+
+                for i in range(len(intersect_area_list)):
+                    intersect_area_all = intersect_area_all + intersect_area_list[
+                        i]
+                    pred_area_all = pred_area_all + pred_area_list[i]
+                    label_area_all = label_area_all + label_area_list[i]
+
+                for i in range(len(acc_lane_list)):
+                    acc_lane_all = acc_lane_all + acc_lane_list[i]
+                    fp_lane_all = fp_lane_all + fp_lane_list[i]
+                    fn_lane_all = fn_lane_all + fn_lane_list[i]
+            else:
+                intersect_area_all = intersect_area_all + intersect_area
+                pred_area_all = pred_area_all + pred_area
+                label_area_all = label_area_all + label_area
+
+                acc_lane_all = acc_lane_all + acc_lane
+                fp_lane_all = fp_lane_all + fp_lane
+                fn_lane_all = fn_lane_all + fn_lane
+            batch_cost_averager.record(
+                time.time() - batch_start, num_samples=len(label))
+            batch_cost = batch_cost_averager.get_average()
+            reader_cost = reader_cost_averager.get_average()
+
+            if local_rank == 0 and print_detail:
+                progbar_val.update(iter + 1, [('batch_cost', batch_cost),
+                                              ('reader cost', reader_cost)])
+            reader_cost_averager.reset()
+            batch_cost_averager.reset()
+            batch_start = time.time()
+
+    # metric_lane = postprocessor.summarize()
+    class_iou, miou = metrics.mean_iou(intersect_area_all, pred_area_all,
+                                       label_area_all)
+    class_acc, acc = metrics.accuracy(intersect_area_all, pred_area_all)
+    kappa = metrics.kappa(intersect_area_all, pred_area_all, label_area_all)
+
+    acc_lane = acc_lane_all.numpy() / total_iters
+    fp_lane = fp_lane_all.numpy() / total_iters
+    fn_lane = fn_lane_all.numpy() / total_iters
+
+    if print_detail:
+        logger.info(
+            "[EVAL] #Images: {} mIoU: {:.4f} Acc: {:.4f} Kappa: {:.4f} ".format(
+                len(eval_dataset), miou, acc, kappa))
+        logger.info("[EVAL] Class IoU: \n" + str(np.round(class_iou, 4)))
+        logger.info("[EVAL] Class Acc: \n" + str(np.round(class_acc, 4)))
+        logger.info("[EVAL] #Acc: {:.4f} Fn: {:.4f} Fp: {:.4f} ".format(
+            acc_lane[0], fn_lane[0], fp_lane[0]))
+    return miou, acc, class_iou, class_acc, kappa, acc_lane[0], fn_lane[
+        0], fp_lane[0]
