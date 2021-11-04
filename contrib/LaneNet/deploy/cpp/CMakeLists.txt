@@ -1,7 +1,11 @@
 cmake_minimum_required(VERSION 3.0)
 project(cpp_inference_demo CXX C)
 
+option(WITH_MKL        "Compile demo with MKL/OpenBlas support, default use MKL."       OFF)
+option(WITH_GPU        "Compile demo with GPU/CPU, default use CPU."                    OFF)
 option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."   ON)
+option(USE_TENSORRT "Compile demo with TensorRT."   OFF)
+option(WITH_ROCM "Compile demo with rocm." OFF)
 
 set(PADDLE_LIB ${CMAKE_SOURCE_DIR}/paddle)
 set(DEMO_NAME test_seg)
@@ -145,7 +149,11 @@ else()
 endif()
 
 if (NOT WIN32)
-  set(EXTERNAL_LIB "-lrt -ldl -lpthread")
+   if(NOT APPLE)
+     set(EXTERNAL_LIB "-lrt -ldl -lpthread")
+  else()
+     set(EXTERNAL_LIB "-ldl -lpthread")
+  endif()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
       glog gflags protobuf xxhash cryptopp
@@ -199,7 +207,6 @@ set(DEPS ${DEPS} ${OpenCV_LIBS})
 include_directories(third_party/)
 add_executable(${DEMO_NAME} src/${DEMO_NAME}.cc third_party/kdtree.cpp third_party/lanenet_model.cpp)
 
-
 target_link_libraries(${DEMO_NAME} ${DEPS})
 
 if(WIN32)
@@ -233,3 +240,4 @@ if(WIN32)
       )
   endif()
 endif()
+
