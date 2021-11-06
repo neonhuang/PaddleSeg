@@ -15,6 +15,7 @@
 import os
 
 import numpy as np
+import cv2
 
 import paddle
 from paddleseg.cvlibs import manager
@@ -22,8 +23,8 @@ from transforms import LaneCompose
 
 
 @manager.DATASETS.add_component
-class LaneSeg(paddle.io.Dataset):
-    NUM_CLASSES = 2
+class TusimpleSeg(paddle.io.Dataset):
+    NUM_CLASSES = 7
 
     def __init__(self, dataset_root=None, transforms=None, mode='train'):
         self.dataset_root = dataset_root
@@ -33,6 +34,9 @@ class LaneSeg(paddle.io.Dataset):
         self.file_list = list()
         self.num_classes = self.NUM_CLASSES
         self.ignore_index = 255
+        self.exist_list = []
+        self.img_name_list = []
+        self.full_img_path_list = []
 
         if mode not in ['train', 'val', 'test']:
             raise ValueError(
@@ -47,17 +51,19 @@ class LaneSeg(paddle.io.Dataset):
 
         if mode == 'train':
             file_path = os.path.join(self.dataset_root,
-                                     'training/train_part.txt')
+                                     'seg_label/list/train_val_gt.txt')
         elif mode == 'val':
-            file_path = os.path.join(self.dataset_root, 'training/val_part.txt')
-        else:
             file_path = os.path.join(self.dataset_root,
-                                     'training/test_part.txt')
+                                     'seg_label/list/test_gt.txt')
+        else:
+            file_path = os.path.join(self.dataset_root, 'training/test_gt.txt')
 
         with open(file_path, 'r') as f:
             for line in f:
                 items = line.strip().split()
-                if len(items) != 3:
+                self.img_name_list.append(items[0])
+                self.full_img_path_list.append(self.dataset_root + items[0])
+                if len(items) != 8:
                     if mode == 'train' or mode == 'val':
                         raise Exception(
                             "File list format incorrect! It should be"
@@ -66,26 +72,41 @@ class LaneSeg(paddle.io.Dataset):
                     label_path = None
                     instance_path = None
                 else:
-                    image_path = os.path.join(self.dataset_root, items[0])
-                    label_path = os.path.join(self.dataset_root, items[1])
-                    instance_path = os.path.join(self.dataset_root, items[2])
-                self.file_list.append([image_path, label_path, instance_path])
+                    image_path = self.dataset_root + items[0]
+                    label_path = self.dataset_root + items[1]
+                    self.exist_list.append(
+                        np.array([
+                            int(items[2]),
+                            int(items[3]),
+                            int(items[4]),
+                            int(items[5]),
+                            int(items[6]),
+                            int(items[7])
+                        ]))
+                self.file_list.append([image_path, label_path])
 
     def __getitem__(self, idx):
-        image_path, label_path, instance_path = self.file_list[idx]
+        image_path, label_path = self.file_list[idx]
 
         if self.mode == 'test':
-            im, _, _ = self.transforms(im=image_path)
+            im, _ = self.transforms(im=image_path)
             im = im[np.newaxis, ...]
             return im, image_path
 
         elif self.mode == 'val':
-            im, label, _ = self.transforms(im=image_path, label=label_path)
-            return im, label
+            im, label = self.transforms(im=image_path, label=label_path)
+            meta = {
+                'full_img_path': self.full_img_path_list[idx],
+                'img_name': self.img_name_list[idx]
+            }
+
+            data = {'img': im, 'meta': meta}
+            return im, label, data
         else:
-            im, label, instance = self.transforms(
-                im=image_path, label=label_path, instancelabel=instance_path)
-            return im, label, instance
+            exist = self.exist_list[idx]
+            im, label, = self.transforms(
+                im=image_path, label=label_path)
+            return im, label, exist
 
     def __len__(self):
         return len(self.file_list)

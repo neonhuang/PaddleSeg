@@ -258,7 +258,7 @@ def train(
                     or iter == iters) and (val_dataset is not None):
                 num_workers = 1 if num_workers > 0 else 0
 
-                mean_iou, acc, _, _, _, acc_lane, fn_lane, fp_lane = evaluate(
+                acc_lane, fn_lane, fp_lane = evaluate(
                     model, val_dataset, num_workers=num_workers)
                 model.train()
 
@@ -295,9 +295,6 @@ def train(
                                               iter)
                         log_writer.add_scalar('Evaluate/avg_fp_lane', fp_lane,
                                               iter)
-                        log_writer.add_scalar('Evaluate/mIoU', mean_iou, iter)
-                        log_writer.add_scalar('Evaluate/Acc', acc, iter)
-
             batch_start = time.time()
 
     # Calculate flops.

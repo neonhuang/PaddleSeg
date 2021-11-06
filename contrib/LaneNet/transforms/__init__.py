@@ -13,4 +13,3 @@
 # limitations under the License.
 
 from .lane_transforms import LaneCompose
-from .lane_transforms_rsa import LaneComposeRsa

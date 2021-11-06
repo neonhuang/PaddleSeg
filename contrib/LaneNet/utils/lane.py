@@ -111,7 +111,7 @@ class LaneEval(object):
             'name': 'FN',
             'value': fn / num,
             'order': 'asc'
-        }]), accuracy / num
+        }]), accuracy / num, fp / num, fn / num
 
 
 if __name__ == '__main__':

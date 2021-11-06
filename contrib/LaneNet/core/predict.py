@@ -19,10 +19,9 @@ import paddle
 
 from paddleseg import utils
 from . import infer
-from utils import lanenet_postprocess
 from paddleseg.utils import logger, progbar
 from utils.utils import minmax_scale, to_png_fn, partition_list, makedirs
-
+from utils import tusimple
 
 def predict(model,
             model_path,
@@ -51,15 +50,15 @@ def predict(model,
     else:
         img_lists = [image_list]
 
-    postprocessor = lanenet_postprocess.LaneNetPostProcessor()
+    postprocessor = tusimple.Tusimple()
     logger.info("Start to predict...")
     progbar_pred = progbar.Progbar(target=len(img_lists[0]), verbose=1)
     with paddle.no_grad():
         for i, im_path in enumerate(img_lists[local_rank]):
-            im = cv2.imread(im_path)
+            im = cv2.imread(im_path).astype('float32')
+            im = im[160:, :, :]
             gt_image = im
-            im = im.astype('float32')
-            im, _, _ = transforms(im)
+            im, _ = transforms(im)
             # For lane tasks, image size remains the post-processed size
             ori_shape = im.shape[1:]
 
@@ -72,33 +71,6 @@ def predict(model,
                 ori_shape=ori_shape,
                 transforms=transforms.transforms)
 
-            segLogits = paddle.squeeze(pred[0])
-            emLogits = paddle.squeeze(pred[1])
-
-            binary_seg_image = segLogits.squeeze(-1)
-            instance_seg_image = emLogits.transpose((1, 2, 0))
-
-            binary_seg_image = binary_seg_image.numpy().astype('int64')
-            instance_seg_image = instance_seg_image.numpy()
-
-            postprocess_result = postprocessor.postprocess(
-                binary_seg_result=binary_seg_image,
-                instance_seg_result=instance_seg_image,
-                source_image=gt_image)
-
-            pred_binary_fn = os.path.join(
-                save_dir, to_png_fn(im_path, name='_pred_binary'))
-            pred_lane_fn = os.path.join(save_dir,
-                                        to_png_fn(im_path, name='_pred_lane'))
-            pred_instance_fn = os.path.join(
-                save_dir, to_png_fn(im_path, name='_pred_instance'))
-            dirname = os.path.dirname(pred_binary_fn)
-            makedirs(dirname)
-
-            cv2.imwrite(pred_binary_fn,
-                        np.array(binary_seg_image * 255).astype(np.uint8))
-            cv2.imwrite(pred_lane_fn, postprocess_result['source_image'])
-            cv2.imwrite(pred_instance_fn, postprocess_result['mask_image'])
-            print(pred_lane_fn, 'saved!')
+            postprocessor.predict(pred, im_path)
 
             progbar_pred.update(i + 1)

@@ -1,0 +1,49 @@
+batch_size: 4
+iters: 320000
+
+train_dataset:
+  type: TusimpleSeg
+  dataset_root: /Users/huangshenghui/PP/resa-main/data/tusimple
+  transforms:
+    - type: LaneRandomRotation
+    - type: RandomHorizontalFlip
+    - type: Resize
+      target_size: [640, 368]
+      interp: 'CUBIC'
+    - type: LaneNormalize
+      mean: [103.939, 116.779, 123.68]
+      std: [1., 1., 1.]
+  mode: train
+
+val_dataset:
+  type: TusimpleSeg
+  dataset_root: /Users/huangshenghui/PP/resa-main/data/tusimple
+  transforms:
+    - type: Resize
+      target_size: [640, 368]
+      interp: 'CUBIC'
+    - type: LaneNormalize
+      mean: [103.939, 116.779, 123.68 ]
+      std: [1., 1., 1. ]
+  mode: val
+
+optimizer:
+  type: sgd
+  momentum: 0.9
+  weight_decay: 4.0e-5
+
+lr_scheduler:
+  type: PolynomialDecay
+  learning_rate: 0.01
+  end_lr: 0
+  power: 0.9
+
+loss:
+  types:
+    - type: LaneRsaCrossEntropyLoss
+    - type: LaneRsaBCELoss
+  coef: [1, 1]
+
+model:
+  type: BiSeNetRsa
+  pretrained: Null
