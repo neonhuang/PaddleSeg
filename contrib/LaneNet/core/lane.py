@@ -1,9 +1,6 @@
-# coding: utf8
-# this code from https://raw.githubusercontent.com/TuSimple/tusimple-benchmark/master/evaluate/lane.py
-
 import numpy as np
 from sklearn.linear_model import LinearRegression
-import ujson as json
+import json as json
 
 
 class LaneEval(object):
@@ -34,20 +31,15 @@ class LaneEval(object):
             raise Exception('Format of lanes error.')
         if running_time > 200 or len(gt) + 2 < len(pred):
             return 0., 0., 1.
-        angles = [
-            LaneEval.get_angle(np.array(x_gts), np.array(y_samples))
-            for x_gts in gt
-        ]
+        angles = [LaneEval.get_angle(
+            np.array(x_gts), np.array(y_samples)) for x_gts in gt]
         threshs = [LaneEval.pixel_thresh / np.cos(angle) for angle in angles]
         line_accs = []
         fp, fn = 0., 0.
         matched = 0.
         for x_gts, thresh in zip(gt, threshs):
-            accs = [
-                LaneEval.line_accuracy(
-                    np.array(x_preds), np.array(x_gts), thresh)
-                for x_preds in pred
-            ]
+            accs = [LaneEval.line_accuracy(
+                np.array(x_preds), np.array(x_gts), thresh) for x_preds in pred]
             max_acc = np.max(accs) if len(accs) > 0 else 0.
             if max_acc < LaneEval.pt_thresh:
                 fn += 1
@@ -60,16 +52,13 @@ class LaneEval(object):
         s = sum(line_accs)
         if len(gt) > 4:
             s -= min(line_accs)
-        return s / max(min(4.0, len(gt)),
-                       1.), fp / len(pred) if len(pred) > 0 else 0., fn / max(
-                           min(len(gt), 4.), 1.)
+        return s / max(min(4.0, len(gt)), 1.), fp / len(pred) if len(pred) > 0 else 0., fn / max(min(len(gt), 4.), 1.)
 
     @staticmethod
     def bench_one_submit(pred_file, gt_file):
         try:
-            json_pred = [
-                json.loads(line) for line in open(pred_file).readlines()
-            ]
+            json_pred = [json.loads(line)
+                         for line in open(pred_file).readlines()]
         except BaseException as e:
             raise Exception('Fail to load json file of the prediction.')
         json_gt = [json.loads(line) for line in open(gt_file).readlines()]
@@ -87,14 +76,13 @@ class LaneEval(object):
             run_time = pred['run_time']
             if raw_file not in gts:
                 raise Exception(
-                    'Some raw_file from your predictions do not exist in the test tasks.'
-                )
+                    'Some raw_file from your predictions do not exist in the test tasks.')
             gt = gts[raw_file]
             gt_lanes = gt['lanes']
             y_samples = gt['h_samples']
             try:
-                a, p, n = LaneEval.bench(pred_lanes, gt_lanes, y_samples,
-                                         run_time)
+                a, p, n = LaneEval.bench(
+                    pred_lanes, gt_lanes, y_samples, run_time)
             except BaseException as e:
                 raise Exception('Format of lanes error.')
             accuracy += a
@@ -102,19 +90,11 @@ class LaneEval(object):
             fn += n
         num = len(gts)
         # the first return parameter is the default ranking parameter
-        return json.dumps([{
-            'name': 'Accuracy',
-            'value': accuracy / num,
-            'order': 'desc'
-        }, {
-            'name': 'FP',
-            'value': fp / num,
-            'order': 'asc'
-        }, {
-            'name': 'FN',
-            'value': fn / num,
-            'order': 'asc'
-        }])
+        return json.dumps([
+            {'name': 'Accuracy', 'value': accuracy / num, 'order': 'desc'},
+            {'name': 'FP', 'value': fp / num, 'order': 'asc'},
+            {'name': 'FN', 'value': fn / num, 'order': 'asc'}
+        ]), accuracy / num
 
 
 if __name__ == '__main__':

@@ -45,17 +45,3 @@ def minmax_scale(input_arr):
     output_arr = (input_arr - min_val) * 255.0 / (max_val - min_val)
 
     return output_arr
-
-
-def split_path(path):
-    """split path tree into list"""
-    folders = []
-    while True:
-        path, folder = os.path.split(path)
-        if folder != "":
-            folders.insert(0, folder)
-        else:
-            if path != "":
-                folders.insert(0, path)
-            break
-    return folders

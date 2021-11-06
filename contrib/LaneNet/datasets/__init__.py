@@ -12,4 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .tusimple_seg import TusimpleSeg
+from .lane_seg import LaneSeg
+from .lane_seg_rsa import LaneSegRsa

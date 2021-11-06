@@ -46,8 +46,7 @@ def loss_computation(logits_list, labels, instance_labels, losses):
         elif loss_name in "LaneCrossEntropyLoss":
             loss_list.append(losses['coef'][i] * loss_i(logits, labels))
         elif loss_name in "LaneRsaBCELoss":
-            loss_list.append(
-                losses['coef'][i] * loss_i(logits, instance_labels))
+            loss_list.append(losses['coef'][i] * loss_i(logits, instance_labels))
         else:
             loss_list.append(losses['coef'][i] * loss_i(logits, labels))
     return loss_list
@@ -258,7 +257,7 @@ def train(
                     or iter == iters) and (val_dataset is not None):
                 num_workers = 1 if num_workers > 0 else 0
 
-                acc_lane, fn_lane, fp_lane = evaluate(
+                mean_iou, acc, _, _, _, acc_lane, fn_lane, fp_lane = evaluate(
                     model, val_dataset, num_workers=num_workers)
                 model.train()
 
@@ -295,6 +294,9 @@ def train(
                                               iter)
                         log_writer.add_scalar('Evaluate/avg_fp_lane', fp_lane,
                                               iter)
+                        log_writer.add_scalar('Evaluate/mIoU', mean_iou, iter)
+                        log_writer.add_scalar('Evaluate/Acc', acc, iter)
+
             batch_start = time.time()
 
     # Calculate flops.

@@ -21,7 +21,8 @@ import numpy as np
 from paddleseg.cvlibs import manager, Config
 from paddleseg.utils import get_sys_env, logger, config_check
 from core.train import train
-from datasets import *
+from datasets import lane_seg
+from datasets import lane_seg_rsa
 from models.losses import *
 
 
@@ -29,7 +30,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Model training')
     # params of training
     parser.add_argument(
-        "--config", dest="cfg", help="The config file.", default=None, type=str)
+        "--config", dest="cfg", help="The config file.", default='configs/lanenet_rsa.yml', type=str)
     parser.add_argument(
         '--iters',
         dest='iters',
@@ -53,7 +54,7 @@ def parse_args():
         dest='save_interval',
         help='How many iters to save a model snapshot once during training.',
         type=int,
-        default=1000)
+        default=5)
     parser.add_argument(
         '--resume_model',
         dest='resume_model',
@@ -158,7 +159,7 @@ def main(args):
         raise ValueError(
             'The length of train_dataset is 0. Please check if your dataset is valid'
         )
-    val_dataset = cfg.val_dataset if args.do_eval else None
+    val_dataset = cfg.val_dataset  # if args.do_eval else None
     losses = cfg.loss
 
     msg = '\n---------------Config Information---------------\n'
