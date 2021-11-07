@@ -5,20 +5,7 @@ import cv2
 import numpy as np
 
 from .lane import LaneEval
-
-
-def split_path(path):
-    """split path tree into list"""
-    folders = []
-    while True:
-        path, folder = os.path.split(path)
-        if folder != "":
-            folders.insert(0, folder)
-        else:
-            if path != "":
-                folders.insert(0, path)
-            break
-    return folders
+from .utils import split_path
 
 
 class Tusimple:
@@ -92,7 +79,7 @@ class Tusimple:
         return lane_coords_list
 
     def evaluate(self, output, batch):
-        seg_pred, exist_pred = output[0], output[1] # output['seg'], output['exist']
+        seg_pred, exist_pred = output[0], output[1]
         seg_pred = F.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.detach().cpu().numpy()
         exist_pred = exist_pred.detach().cpu().numpy()
@@ -106,13 +93,11 @@ class Tusimple:
                 print(line, end="\n", file=f)
 
         eval_result, acc, fp, fn = LaneEval.bench_one_submit(output_file,
-                        "/home/work/resa/data/tusimple/test_label.json")
+                                                             "/home/work/resa/data/tusimple/test_label.json")
 
-        # self.logger.info(eval_result)
         self.dump_to_json = []
         best_acc = max(acc, best_acc)
         return best_acc, acc, fp, fn, eval_result
-
 
     def fix_gap(self, coordinate):
         if any(x > 0 for x in coordinate):
@@ -162,7 +147,7 @@ class Tusimple:
             resize_shape = prob_map.shape
         h, w = prob_map.shape
         H, W = resize_shape
-        H -= 160 # self.cfg.cut_height
+        H -= 160  # self.cfg.cut_height
 
         coords = np.zeros(pts)
         coords[:] = -1.0
@@ -222,4 +207,3 @@ class Tusimple:
         # print(coordinates)
 
         return coordinates
-

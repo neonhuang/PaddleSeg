@@ -16,6 +16,19 @@ import os
 import math
 import numpy as np
 
+def split_path(path):
+    """split path tree into list"""
+    folders = []
+    while True:
+        path, folder = os.path.split(path)
+        if folder != "":
+            folders.insert(0, folder)
+        else:
+            if path != "":
+                folders.insert(0, path)
+            break
+    return folders
+
 
 def makedirs(directory):
     if not os.path.exists(directory):
