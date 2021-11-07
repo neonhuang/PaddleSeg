@@ -93,15 +93,15 @@ class Tusimple:
         seg_pred = seg_pred.detach().cpu().numpy()
         exist_pred = exist_pred.detach().cpu().numpy()
 
-        img_name = batch['meta']['img_name']
-        img_path = batch['meta']['full_img_path']
+        img_name = batch
+        img_path = batch
         lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
 
         for b in range(len(seg_pred)):
             lane_coords = lane_coords_list[b]
             if True:
-                img = cv2.imread(img_path[b])
-                new_img_name = img_name[b].replace('/', '_')
+                img = cv2.imread(img_path)
+                new_img_name = img_name.replace('/', '_')
                 save_dir = os.path.join(self.view_dir, new_img_name)
                 self.view(img, lane_coords, save_dir)
 

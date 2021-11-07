@@ -48,12 +48,10 @@ class LaneComposeRsa:
         Args:
             im (str|np.ndarray): It is either image path or image object.
             label (str|np.ndarray): It is either label path or label ndarray.
-            instancelabel (str|np.ndarray): It is either label path or instancelabel ndarray.
 
         Returns:
             (tuple). A tuple including image, image info, and label after transformation.
         """
-        grt_instance = None
         if isinstance(im, str):
             im = cv2.imread(im).astype('float32')
             im = im[160:, :, :]
@@ -62,20 +60,10 @@ class LaneComposeRsa:
             if len(label.shape) > 2:
                 label = label[:, :, 0]
                 label = label[160:, :]
-            # label = np.asarray(Image.open(label))
-            # label = np.array(label / 255.0, dtype=np.uint8)
-        # if isinstance(instancelabel, str):
-        #     grt_instance = cv2.imread(instancelabel, cv2.IMREAD_GRAYSCALE)
-        # if im is None:
-        #     raise ValueError('Can\'t read The image file {}!'.format(im))
 
         if self.to_rgb:
             im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
 
-        # if grt_instance is not None:
-        #     labels = cv2.merge([label, grt_instance])
-        # else:
-        #     labels = label
         labels = label
         for op in self.transforms:
             outputs = op(im, labels)
@@ -84,18 +72,8 @@ class LaneComposeRsa:
                 labels = outputs[1]
 
         im = np.transpose(im, (2, 0, 1)).astype('float32')
-        label = labels.astype('int64')
-        # if grt_instance is not None:
-        #     label, grt_instance = cv2.split(labels)
-        # else:
-        #     label = labels
-
-        # if grt_instance is not None:
-        #     # h, w = im.shape[1:]
-        #     # grt_instance = cv2.resize(
-        #     #     grt_instance, [w, h], interpolation=cv2.INTER_NEAREST)
-        #     grt_instance = grt_instance[np.newaxis, ...]
-
+        if labels is not None:
+            label = labels.astype('int64')
         return im, label
 
 
@@ -162,7 +140,7 @@ class SampleResize(object):
         out = list()
         out.append(cv2.resize(sample[0], self.size,
                               interpolation=cv2.INTER_CUBIC))
-        if len(sample) > 1:
+        if label is not None and len(sample) > 1:
             out.append(cv2.resize(sample[1], self.size,
                                   interpolation=cv2.INTER_NEAREST))
         return out
@@ -182,6 +160,7 @@ class GroupNormalize(object):
         out_images = list()
         for img, m, s in zip(img_group, self.mean, self.std):
             if len(m) == 1:
+                return out_images
                 img = img - np.array(m)  # single channel image
                 img = img / np.array(s)
             else:
