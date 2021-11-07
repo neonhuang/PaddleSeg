@@ -18,11 +18,12 @@ class Tusimple:
         self.out_path = os.path.join(exp_dir, "coord_output")
         if not os.path.exists(self.out_path):
             os.mkdir(self.out_path)
+        self.view_dir = os.path.join(exp_dir, 'vis')
+        if not os.path.exists(self.view_dir):
+            os.mkdir(self.view_dir)
+
         self.dump_to_json = []
         self.thresh = 0.6  # cfg.evaluator.thresh
-        # self.logger = get_logger('resa')
-        # if cfg.view:
-        #     self.view_dir = os.path.join(self.cfg.work_dir, 'vis')
 
     def evaluate_pred(self, seg_pred, exist_pred, batch):
         img_name = batch['meta']['img_name']
@@ -59,11 +60,11 @@ class Tusimple:
             for (x, y) in lane_coords[0]:
                 json_dict['h_sample'].append(y)
             self.dump_to_json.append(json.dumps(json_dict))
-            # if self.cfg.view:
-            #     img = cv2.imread(img_path[b])
-            #     new_img_name = img_name[b].replace('/', '_')
-            #     save_dir = os.path.join(self.view_dir, new_img_name)
-            #     dataset.view(img, lane_coords, save_dir)
+            if True:
+                img = cv2.imread(img_path[b])
+                new_img_name = img_name[b].replace('/', '_')
+                save_dir = os.path.join(self.view_dir, new_img_name)
+                self.view(img, lane_coords, save_dir)
 
     def prob2lines_tusimple(self, seg_pred, exist_pred):
         lane_coords_list = []
@@ -98,6 +99,14 @@ class Tusimple:
         self.dump_to_json = []
         best_acc = max(acc, best_acc)
         return best_acc, acc, fp, fn, eval_result
+
+    def view(self, img, coords, file_path=None):
+        for coord in coords:
+            for x, y in coord:
+                if x <= 0 or y <= 0:
+                    continue
+                x, y = int(x), int(y)
+                cv2.circle(img, (x, y), 4, (255, 0, 0), 2)
 
     def fix_gap(self, coordinate):
         if any(x > 0 for x in coordinate):
