@@ -40,15 +40,10 @@ class Tusimple:
     def evaluate_pred(self, seg_pred, exist_pred, batch):
         img_name = batch['meta']['img_name']
         img_path = batch['meta']['full_img_path']
-        for b in range(len(seg_pred)):
-            seg = seg_pred[b]
-            exist = [1 if exist_pred[b, i] >
-                          0.5 else 0 for i in range(7 - 1)]
-            lane_coords = self.probmap2lane(seg, exist, thresh=self.thresh)
-            for i in range(len(lane_coords)):
-                lane_coords[i] = sorted(
-                    lane_coords[i], key=lambda pair: pair[1])
+        lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
 
+        for b in range(len(seg_pred)):
+            lane_coords = lane_coords_list[b]
             path_tree = split_path(img_name[b])
             save_dir, save_name = path_tree[-3:-1], path_tree[-1]
             save_dir = os.path.join(self.out_path, *save_dir)
@@ -82,6 +77,19 @@ class Tusimple:
             #     new_img_name = img_name[b].replace('/', '_')
             #     save_dir = os.path.join(self.view_dir, new_img_name)
             #     dataset.view(img, lane_coords, save_dir)
+
+    def prob2lines_tusimple(self, seg_pred, exist_pred):
+        lane_coords_list = []
+        for b in range(len(seg_pred)):
+            seg = seg_pred[b]
+            exist = [1 if exist_pred[b, i] >
+                          0.5 else 0 for i in range(7 - 1)]
+            lane_coords = self.probmap2lane(seg, exist, thresh=self.thresh)
+            for i in range(len(lane_coords)):
+                lane_coords[i] = sorted(
+                    lane_coords[i], key=lambda pair: pair[1])
+            lane_coords_list.append(lane_coords)
+        return lane_coords_list
 
     def evaluate(self, output, batch):
         seg_pred, exist_pred = output[0], output[1] # output['seg'], output['exist']
