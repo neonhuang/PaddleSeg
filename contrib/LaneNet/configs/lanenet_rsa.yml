@@ -16,7 +16,9 @@ val_dataset:
   type: LaneSegRsa
   dataset_root: /home/work/resa/data/tusimple
   transforms:
-    - type: SampleResize
+    - type: Resize
+      target_size: [640, 368]
+      interp: 'CUBIC'
     - type: GroupNormalize
   mode: val
 
