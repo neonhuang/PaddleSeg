@@ -19,7 +19,7 @@ from tqdm import tqdm
 from paddleseg.utils import metrics, TimeAverager, calculate_eta, logger, progbar
 from . import infer
 from utils.metrics_utils import *
-from . import TusimpleVal
+from utils import tusimple
 
 
 np.set_printoptions(suppress=True)
@@ -61,7 +61,7 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
         return_list=True,
     )
 
-    postprocessor = TusimpleVal.TusimpleEval()
+    postprocessor = tusimple.Tusimple()
 
     total_iters = len(loader)
 
@@ -76,7 +76,6 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     with paddle.no_grad():
-        #for iter, (im, label, data) in enumerate(loader):
         for i, (im, label, data) in enumerate(tqdm(loader, desc=f'Validate')):
             reader_cost_averager.record(time.time() - batch_start)
             label = label.astype('int64')

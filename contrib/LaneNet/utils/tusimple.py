@@ -20,9 +20,9 @@ def split_path(path):
     return folders
 
 
-class TusimpleEval:
+class Tusimple:
     def __init__(self):
-        super(TusimpleEval, self).__init__()
+        super(Tusimple, self).__init__()
         # self.cfg = cfg
         exp_dir = "output"
         if not os.path.exists(exp_dir):
