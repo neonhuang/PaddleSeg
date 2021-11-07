@@ -1,6 +1,7 @@
 import paddle.nn.functional as F
 import json
 import os
+import os.path as osp
 import cv2
 import numpy as np
 
@@ -86,6 +87,25 @@ class Tusimple:
         exist_pred = exist_pred.detach().cpu().numpy()
         self.evaluate_pred(seg_pred, exist_pred, batch)
 
+    def predict(self, output, batch):
+        seg_pred, exist_pred = output[0], output[1]
+        seg_pred = F.softmax(seg_pred, axis=1)
+        seg_pred = seg_pred.detach().cpu().numpy()
+        exist_pred = exist_pred.detach().cpu().numpy()
+
+        img_name = batch['meta']['img_name']
+        img_path = batch['meta']['full_img_path']
+        lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
+
+        for b in range(len(seg_pred)):
+            lane_coords = lane_coords_list[b]
+            if True:
+                img = cv2.imread(img_path[b])
+                new_img_name = img_name[b].replace('/', '_')
+                save_dir = os.path.join(self.view_dir, new_img_name)
+                self.view(img, lane_coords, save_dir)
+
+
     def summarize(self):
         best_acc = 0
         output_file = os.path.join(self.out_path, 'predict_test.json')
@@ -107,6 +127,11 @@ class Tusimple:
                     continue
                 x, y = int(x), int(y)
                 cv2.circle(img, (x, y), 4, (255, 0, 0), 2)
+
+        if file_path is not None:
+            if not os.path.exists(osp.dirname(file_path)):
+                os.makedirs(osp.dirname(file_path))
+            cv2.imwrite(file_path, img)
 
     def fix_gap(self, coordinate):
         if any(x > 0 for x in coordinate):
