@@ -7,8 +7,12 @@ train_dataset:
   transforms:
     - type: GroupRandomRotation
     - type: GroupRandomHorizontalFlip
-    - type: SampleResize
-    - type: GroupNormalize
+    - type: Resize
+      target_size: [640, 368]
+      interp: 'CUBIC'
+    - type: LaneNormalize
+      mean: [103.939, 116.779, 123.68]
+      std: [1., 1., 1.]
 
   mode: train
 

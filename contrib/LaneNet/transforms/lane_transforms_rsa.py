@@ -43,7 +43,7 @@ class LaneComposeRsa:
         self.transforms = transforms
         self.to_rgb = to_rgb
 
-    def __call__(self, im, label=None, instancelabel=None):
+    def __call__(self, im, label=None):
         """
         Args:
             im (str|np.ndarray): It is either image path or image object.
@@ -115,7 +115,7 @@ class GroupRandomHorizontalFlip(object):
     def __init__(self, is_flow=False):
         self.is_flow = is_flow
 
-    def __call__(self, im, label = None, is_flow=False):
+    def __call__(self, im, label=None, is_flow=False):
         img_group = im, label
         v = random.random()
         if v < 0.5:
@@ -127,23 +127,6 @@ class GroupRandomHorizontalFlip(object):
             return out_images
         else:
             return img_group
-
-
-@manager.TRANSFORMS.add_component
-class SampleResize(object):
-    def __init__(self, size = (640, 368)):
-        assert (isinstance(size, collections.Iterable) and len(size) == 2)
-        self.size = size
-
-    def __call__(self, im, label = None):
-        sample = im, label
-        out = list()
-        out.append(cv2.resize(sample[0], self.size,
-                              interpolation=cv2.INTER_CUBIC))
-        if label is not None and len(sample) > 1:
-            out.append(cv2.resize(sample[1], self.size,
-                                  interpolation=cv2.INTER_NEAREST))
-        return out
 
 
 @manager.TRANSFORMS.add_component
@@ -168,30 +151,6 @@ class LaneNormalize:
         im /= std
 
         if label is None:
-            return (im, )
+            return (im,)
         else:
             return (im, label)
-
-@manager.TRANSFORMS.add_component
-class GroupNormalize(object):
-    def __init__(self, mean=(103.939, 116.779, 123.68), std=(1., 1., 1.)):
-        # tf.GroupNormalize(mean=(self.cfg.img_norm['mean'], (0,)), std=(
-        #     self.cfg.img_norm['std'], (1,))),
-        self.mean=([103.939, 116.779, 123.68], (0,))
-        self.std =([1., 1., 1.], (1,))
-        # self.std = std
-
-    def __call__(self, im, label = None):
-        img_group = im, label
-        out_images = list()
-        for img, m, s in zip(img_group, self.mean, self.std):
-            if len(m) == 1:
-                return out_images
-                img = img - np.array(m)  # single channel image
-                img = img / np.array(s)
-            else:
-                img = img - np.array(m)[np.newaxis, np.newaxis, ...]
-                img = img / np.array(s)[np.newaxis, np.newaxis, ...]
-            out_images.append(img)
-
-        return out_images

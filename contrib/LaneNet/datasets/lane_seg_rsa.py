@@ -99,7 +99,7 @@ class LaneSegRsa(paddle.io.Dataset):
             return im, label, data
         else:
             exist = self.exist_list[idx]
-            im, label, = self.transforms(im=image_path, label=label_path, instancelabel=None)
+            im, label, = self.transforms(im=image_path, label=label_path)
             return im, label, exist
 
     def __len__(self):
