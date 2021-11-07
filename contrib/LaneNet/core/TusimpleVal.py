@@ -96,10 +96,10 @@ class TusimpleEval:
             for line in self.dump_to_json:
                 print(line, end="\n", file=f)
 
-        eval_result, acc = LaneEval.bench_one_submit(output_file,
+        eval_result, acc, fp, fn = LaneEval.bench_one_submit(output_file,
                         "/home/work/resa/data/tusimple/test_label.json")
 
         # self.logger.info(eval_result)
         self.dump_to_json = []
         best_acc = max(acc, best_acc)
-        return best_acc, eval_result
+        return best_acc, acc, fp, fn, eval_result
