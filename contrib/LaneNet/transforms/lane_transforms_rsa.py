@@ -147,6 +147,32 @@ class SampleResize(object):
 
 
 @manager.TRANSFORMS.add_component
+class LaneNormalize:
+    def __init__(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
+        self.mean = mean
+        self.std = std
+        if not (isinstance(self.mean, (list, tuple))
+                and isinstance(self.std, (list, tuple))):
+            raise ValueError(
+                "{}: input type is invalid. It should be list or tuple".format(
+                    self))
+        from functools import reduce
+        if reduce(lambda x, y: x * y, self.std) == 0:
+            raise ValueError('{}: std is invalid!'.format(self))
+
+    def __call__(self, im, label=None):
+        mean = np.array(self.mean)[np.newaxis, np.newaxis, :]
+        std = np.array(self.std)[np.newaxis, np.newaxis, :]
+        im = im.astype(np.float32, copy=False)
+        im -= mean
+        im /= std
+
+        if label is None:
+            return (im, )
+        else:
+            return (im, label)
+
+@manager.TRANSFORMS.add_component
 class GroupNormalize(object):
     def __init__(self, mean=(103.939, 116.779, 123.68), std=(1., 1., 1.)):
         # tf.GroupNormalize(mean=(self.cfg.img_norm['mean'], (0,)), std=(
