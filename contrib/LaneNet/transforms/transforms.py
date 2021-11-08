@@ -56,7 +56,7 @@ class Compose:
             im = cv2.imread(im).astype('float32')
             im = im[160:, :, :]
         if isinstance(label, str):
-            label = cv2.imread(label, cv2.IMREAD_UNCHANGED)
+            label = np.asarray(Image.open(label))
             if len(label.shape) > 2:
                 label = label[:, :, 0]
                 label = label[160:, :]
@@ -70,7 +70,6 @@ class Compose:
             im = outputs[0]
             if len(outputs) == 2:
                 label = outputs[1]
-
         im = np.transpose(im, (2, 0, 1))
         return (im, label)
 

@@ -19,7 +19,7 @@ import cv2
 
 import paddle
 from paddleseg.cvlibs import manager
-from transforms.lane_transforms_rsa import Compose
+from transforms.transforms import Compose
 
 
 @manager.DATASETS.add_component
