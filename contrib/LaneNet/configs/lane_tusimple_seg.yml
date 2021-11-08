@@ -4,6 +4,7 @@ iters: 320000
 train_dataset:
   type: TusimpleSeg
   dataset_root: /home/work/resa/data/tusimple/
+  cut_height: 160
   transforms:
     - type: GroupRandomRotation
     - type: GroupRandomHorizontalFlip
@@ -19,6 +20,7 @@ train_dataset:
 val_dataset:
   type: TusimpleSeg
   dataset_root: /home/work/resa/data/tusimple/
+  cut_height: 160
   transforms:
     - type: Resize
       target_size: [640, 368]
