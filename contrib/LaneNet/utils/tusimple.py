@@ -10,31 +10,28 @@ from .utils import split_path
 
 
 class Tusimple:
-    def __init__(self, num_classes=7, thresh=0.6):
+    def __init__(self, num_classes=7, thresh=0.6, save_dir='output'):
         super(Tusimple, self).__init__()
-        exp_dir = "output"
-        if not os.path.exists(exp_dir):
-            os.mkdir(exp_dir)
-        self.out_path = os.path.join(exp_dir, "coord_output")
-        if not os.path.exists(self.out_path):
-            os.mkdir(self.out_path)
-        self.view_dir = os.path.join(exp_dir, 'vis')
-        if not os.path.exists(self.view_dir):
-            os.mkdir(self.view_dir)
-
+        if not os.path.exists(save_dir):
+            os.mkdir(save_dir)
         self.dump_to_json = []
         self.thresh = thresh
         self.num_classes = num_classes
+        self.save_dir = save_dir
 
     def evaluate_pred(self, seg_pred, exist_pred, im_path):
         img_path = im_path
         lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
 
+        coord_path = os.path.join(self.save_dir, "coord_output")
+        if not os.path.exists(coord_path):
+            os.mkdir(coord_path)
+
         for b in range(len(seg_pred)):
             lane_coords = lane_coords_list[b]
             path_tree = split_path(img_path[b])
             save_dir, save_name = path_tree[-3:-1], path_tree[-1]
-            save_dir = os.path.join(self.out_path, *save_dir)
+            save_dir = os.path.join(coord_path, *save_dir)
             save_name = save_name[:-3] + "lines.txt"
             save_name = os.path.join(save_dir, save_name)
             if not os.path.exists(save_dir):
@@ -64,7 +61,11 @@ class Tusimple:
                 img = cv2.imread(img_path[b])
                 new_img_name = '_'.join(
                     [x for x in split_path(img_path[b])[-4:]])
-                save_dir = os.path.join(self.view_dir, new_img_name)
+
+                view_dir = os.path.join(self.save_dir, 'vis')
+                if not os.path.exists(view_dir):
+                    os.mkdir(view_dir)
+                save_dir = os.path.join(view_dir, new_img_name)
                 self.view(img, lane_coords, save_dir)
 
     def prob2lines_tusimple(self, seg_pred, exist_pred):
@@ -101,9 +102,11 @@ class Tusimple:
             if True:
                 img = cv2.imread(img_path)
                 new_img_name = img_name.replace('/', '_')
-                save_dir = os.path.join(self.view_dir, new_img_name)
+                point_dir = os.path.join(self.save_dir, 'points')
+                if not os.path.exists(point_dir):
+                    os.mkdir(point_dir)
+                save_dir = os.path.join(point_dir, new_img_name)
                 self.view(img, lane_coords, save_dir)
-
 
     def summarize(self):
         best_acc = 0
