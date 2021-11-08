@@ -27,13 +27,12 @@ class Tusimple:
         self.thresh = 0.6  # cfg.evaluator.thresh
 
     def evaluate_pred(self, seg_pred, exist_pred, batch):
-        img_name = batch['meta']['img_name']
         img_path = batch['meta']['full_img_path']
         lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
 
         for b in range(len(seg_pred)):
             lane_coords = lane_coords_list[b]
-            path_tree = split_path(img_name[b])
+            path_tree = split_path(img_path[b])
             save_dir, save_name = path_tree[-3:-1], path_tree[-1]
             save_dir = os.path.join(self.out_path, *save_dir)
             save_name = save_name[:-3] + "lines.txt"
@@ -63,7 +62,8 @@ class Tusimple:
             self.dump_to_json.append(json.dumps(json_dict))
             if True:
                 img = cv2.imread(img_path[b])
-                new_img_name = img_name[b].replace('/', '_')
+                new_img_name = '_'.join(
+                    [x for x in split_path(img_path[b])[-4:]])
                 save_dir = os.path.join(self.view_dir, new_img_name)
                 self.view(img, lane_coords, save_dir)
 
