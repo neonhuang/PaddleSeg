@@ -90,9 +90,8 @@ class Tusimple:
     def predict(self, output, im_path):
         seg_pred, exist_pred = output[0], output[1]
         seg_pred = F.softmax(seg_pred, axis=1)
-        seg_pred = seg_pred.detach().cpu().numpy()
-        exist_pred = exist_pred.detach().cpu().numpy()
-
+        seg_pred = seg_pred.numpy()
+        exist_pred = exist_pred.numpy()
         img_name = im_path
         img_path = im_path
         lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
