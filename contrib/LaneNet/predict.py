@@ -112,7 +112,6 @@ def main(args):
     logger.info(msg)
 
     model = cfg.model
-    transforms = val_dataset.transforms
     image_list, image_dir = get_image_list(args.image_path)
     logger.info('Number of predict images = {}'.format(len(image_list)))
 
@@ -121,7 +120,7 @@ def main(args):
     predict(
         model,
         model_path=args.model_path,
-        transforms=transforms,
+        val_dataset=val_dataset,
         image_list=image_list,
         image_dir=image_dir,
         save_dir=args.save_dir)

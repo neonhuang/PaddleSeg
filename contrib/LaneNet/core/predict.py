@@ -34,9 +34,7 @@ def mkdir(path):
 
 def predict(model,
             model_path,
-            transforms,
-            cut_height,
-            num_classes,
+            val_dataset,
             image_list,
             image_dir=None,
             save_dir='output'):
@@ -46,8 +44,7 @@ def predict(model,
     Args:
         model (nn.Layer): Used to predict for input image.
         model_path (str): The path of pretrained model.
-        transforms (transform.Compose): Preprocess for input image.
-        cut_height (int): cut input image from height.
+        val_dataset (paddle.io.Dataset): Used to read and process validation datasets.
         image_list (list): A list of image path to be predicted.
         image_dir (str, optional): The root directory of the images predicted. Default: None.
         save_dir (str, optional): The directory to save the visualized results. Default: 'output'.
@@ -64,7 +61,9 @@ def predict(model,
 
     added_saved_dir = os.path.join(save_dir, 'added_prediction')
     pred_saved_dir = os.path.join(save_dir, 'pseudo_color_prediction')
-
+    transforms = val_dataset.transforms
+    cut_height = val_dataset.cut_height
+    num_classes = val_dataset.num_classes
     postprocessor = tusimple.Tusimple(save_dir=save_dir,
                                       num_classes=num_classes,
                                       cut_height=cut_height)
