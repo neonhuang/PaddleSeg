@@ -19,7 +19,7 @@ import cv2
 
 import paddle
 from paddleseg.cvlibs import manager
-from transforms import LaneComposeRsa
+from transforms.lane_transforms_rsa import Compose
 
 
 @manager.DATASETS.add_component
@@ -28,7 +28,7 @@ class LaneSegRsa(paddle.io.Dataset):
 
     def __init__(self, dataset_root=None, transforms=None, mode='train'):
         self.dataset_root = dataset_root
-        self.transforms = LaneComposeRsa(transforms)
+        self.transforms = Compose(transforms, to_rgb=False)
         mode = mode.lower()
         self.mode = mode
         self.file_list = list()

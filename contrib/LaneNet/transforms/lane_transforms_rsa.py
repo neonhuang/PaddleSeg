@@ -23,21 +23,21 @@ from paddleseg.cvlibs import manager
 
 
 @manager.TRANSFORMS.add_component
-class LaneComposeRsa:
+class Compose:
     """
     Do transformation on input data with corresponding pre-processing and augmentation operations.
     The shape of input data to all operations is [height, width, channels].
 
     Args:
         transforms (list): A list contains data pre-processing or augmentation. Empty list means only reading images, no transformation.
-        to_rgb (bool, optional): If converting image to RGB color space. Default: False.
+        to_rgb (bool, optional): If converting image to RGB color space. Default: True.
 
     Raises:
         TypeError: When 'transforms' is not a list.
         ValueError: when the length of 'transforms' is less than 1.
     """
 
-    def __init__(self, transforms, to_rgb=False):
+    def __init__(self, transforms, to_rgb=True):
         if not isinstance(transforms, list):
             raise TypeError('The transforms must be a list!')
         self.transforms = transforms
@@ -54,27 +54,20 @@ class LaneComposeRsa:
         """
         if isinstance(im, str):
             im = cv2.imread(im).astype('float32')
-            im = im[160:, :, :]
         if isinstance(label, str):
-            label = cv2.imread(label, cv2.IMREAD_UNCHANGED)
-            if len(label.shape) > 2:
-                label = label[:, :, 0]
-                label = label[160:, :]
-
+            label = np.asarray(Image.open(label))
+        if im is None:
+            raise ValueError('Can\'t read The image file {}!'.format(im))
         if self.to_rgb:
             im = cv2.cvtColor(im, cv2.COLOR_BGR2RGB)
 
-        labels = label
         for op in self.transforms:
-            outputs = op(im, labels)
+            outputs = op(im, label)
             im = outputs[0]
             if len(outputs) == 2:
-                labels = outputs[1]
-
-        im = np.transpose(im, (2, 0, 1)).astype('float32')
-        if labels is not None:
-            label = labels.astype('int64')
-        return im, label
+                label = outputs[1]
+        im = np.transpose(im, (2, 0, 1))
+        return (im, label)
 
 
 @manager.TRANSFORMS.add_component
