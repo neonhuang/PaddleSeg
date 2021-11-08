@@ -19,71 +19,12 @@ class Tusimple:
         self.num_classes = num_classes
         self.save_dir = save_dir
 
-    def evaluate_pred(self, seg_pred, exist_pred, im_path):
-        img_path = im_path
-        lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
-
-        coord_path = os.path.join(self.save_dir, "coord_output")
-        if not os.path.exists(coord_path):
-            os.mkdir(coord_path)
-
-        for b in range(len(seg_pred)):
-            lane_coords = lane_coords_list[b]
-            path_tree = split_path(img_path[b])
-            save_dir, save_name = path_tree[-3:-1], path_tree[-1]
-            save_dir = os.path.join(coord_path, *save_dir)
-            save_name = save_name[:-3] + "lines.txt"
-            save_name = os.path.join(save_dir, save_name)
-            if not os.path.exists(save_dir):
-                os.makedirs(save_dir, exist_ok=True)
-
-            with open(save_name, "w") as f:
-                for l in lane_coords:
-                    for (x, y) in l:
-                        print("{} {}".format(x, y), end=" ", file=f)
-                    print(file=f)
-
-            json_dict = {}
-            json_dict['lanes'] = []
-            json_dict['h_sample'] = []
-            json_dict['raw_file'] = os.path.join(*path_tree[-4:])
-            json_dict['run_time'] = 0
-            for l in lane_coords:
-                if len(l) == 0:
-                    continue
-                json_dict['lanes'].append([])
-                for (x, y) in l:
-                    json_dict['lanes'][-1].append(int(x))
-            for (x, y) in lane_coords[0]:
-                json_dict['h_sample'].append(y)
-            self.dump_to_json.append(json.dumps(json_dict))
-            if True:
-                img = cv2.imread(img_path[b])
-                new_img_name = '_'.join(
-                    [x for x in split_path(img_path[b])[-4:]])
-
-                saved_path = os.path.join(self.save_dir, 'vis', new_img_name)
-                self.draw(img, lane_coords, saved_path)
-
-    def prob2lines_tusimple(self, seg_pred, exist_pred):
-        lane_coords_list = []
-        for b in range(len(seg_pred)):
-            seg = seg_pred[b]
-            exist = [1 if exist_pred[b, i] >
-                          0.5 else 0 for i in range(self.num_classes - 1)]
-            lane_coords = self.probmap2lane(seg, exist, thresh=self.thresh)
-            for i in range(len(lane_coords)):
-                lane_coords[i] = sorted(
-                    lane_coords[i], key=lambda pair: pair[1])
-            lane_coords_list.append(lane_coords)
-        return lane_coords_list
-
     def evaluate(self, output, im_path):
         seg_pred, exist_pred = output[0], output[1]
         seg_pred = F.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.numpy()
         exist_pred = exist_pred.numpy()
-        self.evaluate_pred(seg_pred, exist_pred, im_path)
+        self.generate_files(seg_pred, exist_pred, im_path)
 
     def predict(self, output, im_path):
         seg_pred, exist_pred = output[0], output[1]
@@ -126,6 +67,59 @@ class Tusimple:
         if file_path is not None:
             mkdir(file_path)
             cv2.imwrite(file_path, img)
+
+    def generate_files(self, seg_pred, exist_pred, im_path):
+        img_path = im_path
+        lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
+
+        coord_path = os.path.join(self.save_dir, "coord_output")
+        for b in range(len(seg_pred)):
+            lane_coords = lane_coords_list[b]
+            path_tree = split_path(img_path[b])
+            save_dir, save_name = path_tree[-3:-1], path_tree[-1]
+            save_dir = os.path.join(coord_path, *save_dir)
+            save_name = os.path.join(save_dir, save_name[:-3] + "lines.txt")
+            mkdir(save_name)
+            with open(save_name, "w") as f:
+                for l in lane_coords:
+                    for (x, y) in l:
+                        print("{} {}".format(x, y), end=" ", file=f)
+                    print(file=f)
+
+            json_dict = {}
+            json_dict['lanes'] = []
+            json_dict['h_sample'] = []
+            json_dict['raw_file'] = os.path.join(*path_tree[-4:])
+            json_dict['run_time'] = 0
+            for l in lane_coords:
+                if len(l) == 0:
+                    continue
+                json_dict['lanes'].append([])
+                for (x, y) in l:
+                    json_dict['lanes'][-1].append(int(x))
+            for (x, y) in lane_coords[0]:
+                json_dict['h_sample'].append(y)
+            self.dump_to_json.append(json.dumps(json_dict))
+            if True:
+                img = cv2.imread(img_path[b])
+                new_img_name = '_'.join(
+                    [x for x in split_path(img_path[b])[-4:]])
+
+                saved_path = os.path.join(self.save_dir, 'vis', new_img_name)
+                self.draw(img, lane_coords, saved_path)
+
+    def prob2lines_tusimple(self, seg_pred, exist_pred):
+        lane_coords_list = []
+        for b in range(len(seg_pred)):
+            seg = seg_pred[b]
+            exist = [1 if exist_pred[b, i] >
+                          0.5 else 0 for i in range(self.num_classes - 1)]
+            lane_coords = self.probmap2lane(seg, exist, thresh=self.thresh)
+            for i in range(len(lane_coords)):
+                lane_coords[i] = sorted(
+                    lane_coords[i], key=lambda pair: pair[1])
+            lane_coords_list.append(lane_coords)
+        return lane_coords_list
 
     def fix_gap(self, coordinate):
         if any(x > 0 for x in coordinate):
