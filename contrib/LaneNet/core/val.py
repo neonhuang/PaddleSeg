@@ -88,7 +88,7 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
                 ori_shape=ori_shape,
                 transforms=eval_dataset.transforms.transforms)
 
-            postprocessor.evaluate(pred, im_path)
+            postprocessor.evaluate(pred[1], im_path)
         best_acc, acc, fp, fn, eval_result = postprocessor.summarize()
         logger.info(eval_result)
     return best_acc, best_acc, best_acc, best_acc, best_acc, acc, fn, fp
