@@ -9,7 +9,7 @@ from .utils import split_path, mkdir
 
 
 class Tusimple:
-    def __init__(self, num_classes=7, cut_height=160, thresh=0.6, save_dir='output'):
+    def __init__(self, num_classes=2, cut_height=0, thresh=0.6, save_dir='output'):
         super(Tusimple, self).__init__()
         self.dump_to_json = []
         self.thresh = thresh

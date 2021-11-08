@@ -37,11 +37,12 @@ class Compose:
         ValueError: when the length of 'transforms' is less than 1.
     """
 
-    def __init__(self, transforms, to_rgb=True):
+    def __init__(self, transforms, cut_height=0, to_rgb=True):
         if not isinstance(transforms, list):
             raise TypeError('The transforms must be a list!')
         self.transforms = transforms
         self.to_rgb = to_rgb
+        self.cut_height = cut_height
 
     def __call__(self, im, label=None):
         """
@@ -54,12 +55,12 @@ class Compose:
         """
         if isinstance(im, str):
             im = cv2.imread(im).astype('float32')
-            im = im[160:, :, :]
+            im = im[self.cut_height:, :, :]
         if isinstance(label, str):
             label = np.asarray(Image.open(label))
             if len(label.shape) > 2:
                 label = label[:, :, 0]
-                label = label[160:, :]
+                label = label[self.cut_height:, :]
         if im is None:
             raise ValueError('Can\'t read The image file {}!'.format(im))
         if self.to_rgb:

@@ -26,15 +26,16 @@ from transforms.transforms import Compose
 class TusimpleSeg(paddle.io.Dataset):
     NUM_CLASSES = 7
 
-    def __init__(self, dataset_root=None, transforms=None, mode='train'):
+    def __init__(self, dataset_root=None, transforms=None, cut_height=0, mode='train'):
         self.dataset_root = dataset_root
-        self.transforms = Compose(transforms, to_rgb=False)
+        self.transforms = Compose(transforms, cut_height, to_rgb=False)
         mode = mode.lower()
         self.mode = mode
         self.file_list = list()
         self.num_classes = self.NUM_CLASSES
         self.ignore_index = 255
         self.exist_list = []
+        self.cut_height = cut_height
 
         if mode not in ['train', 'val', 'test']:
             raise ValueError(
