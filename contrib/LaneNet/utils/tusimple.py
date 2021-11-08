@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 from .lane import LaneEval
-from .utils import split_path
+from .utils import split_path, mkdir
 
 
 class Tusimple:
@@ -62,11 +62,8 @@ class Tusimple:
                 new_img_name = '_'.join(
                     [x for x in split_path(img_path[b])[-4:]])
 
-                view_dir = os.path.join(self.save_dir, 'vis')
-                if not os.path.exists(view_dir):
-                    os.mkdir(view_dir)
-                save_dir = os.path.join(view_dir, new_img_name)
-                self.view(img, lane_coords, save_dir)
+                saved_path = os.path.join(self.save_dir, 'vis', new_img_name)
+                self.draw(img, lane_coords, saved_path)
 
     def prob2lines_tusimple(self, seg_pred, exist_pred):
         lane_coords_list = []
@@ -93,7 +90,6 @@ class Tusimple:
         seg_pred = F.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.numpy()
         exist_pred = exist_pred.numpy()
-        img_name = im_path
         img_path = im_path
         lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
 
@@ -101,16 +97,13 @@ class Tusimple:
             lane_coords = lane_coords_list[b]
             if True:
                 img = cv2.imread(img_path)
-                new_img_name = img_name.replace('/', '_')
-                point_dir = os.path.join(self.save_dir, 'points')
-                if not os.path.exists(point_dir):
-                    os.mkdir(point_dir)
-                save_dir = os.path.join(point_dir, new_img_name)
-                self.view(img, lane_coords, save_dir)
+                im_file = os.path.basename(im_path)
+                saved_path = os.path.join(self.save_dir, 'points', im_file)
+                self.draw(img, lane_coords, saved_path)
 
     def summarize(self):
         best_acc = 0
-        output_file = os.path.join(self.out_path, 'predict_test.json')
+        output_file = os.path.join(self.save_dir, 'predict_test.json')
         with open(output_file, "w+") as f:
             for line in self.dump_to_json:
                 print(line, end="\n", file=f)
@@ -122,7 +115,7 @@ class Tusimple:
         best_acc = max(acc, best_acc)
         return best_acc, acc, fp, fn, eval_result
 
-    def view(self, img, coords, file_path=None):
+    def draw(self, img, coords, file_path=None):
         for coord in coords:
             for x, y in coord:
                 if x <= 0 or y <= 0:
@@ -131,8 +124,7 @@ class Tusimple:
                 cv2.circle(img, (x, y), 4, (255, 0, 0), 2)
 
         if file_path is not None:
-            if not os.path.exists(osp.dirname(file_path)):
-                os.makedirs(osp.dirname(file_path))
+            mkdir(file_path)
             cv2.imwrite(file_path, img)
 
     def fix_gap(self, coordinate):

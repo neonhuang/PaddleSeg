@@ -16,6 +16,7 @@ import os
 import math
 import numpy as np
 
+
 def split_path(path):
     """split path tree into list"""
     folders = []
@@ -28,6 +29,12 @@ def split_path(path):
                 folders.insert(0, path)
             break
     return folders
+
+
+def mkdir(path):
+    sub_dir = os.path.dirname(path)
+    if not os.path.exists(sub_dir):
+        os.makedirs(sub_dir)
 
 
 def makedirs(directory):
