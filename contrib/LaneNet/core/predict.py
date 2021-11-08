@@ -63,10 +63,7 @@ def predict(model,
     pred_saved_dir = os.path.join(save_dir, 'pseudo_color_prediction')
     transforms = val_dataset.transforms
     cut_height = val_dataset.cut_height
-    num_classes = val_dataset.num_classes
-    postprocessor = tusimple.Tusimple(save_dir=save_dir,
-                                      num_classes=num_classes,
-                                      cut_height=cut_height)
+    postprocessor = tusimple.Tusimple(val_dataset=val_dataset, save_dir=save_dir)
 
     logger.info("Start to predict...")
     progbar_pred = progbar.Progbar(target=len(img_lists[0]), verbose=1)
@@ -86,6 +83,23 @@ def predict(model,
                 im,
                 ori_shape=cut_shape,
                 transforms=transforms.transforms)
+
+            # instance_seg_image = paddle.squeeze(pred[1][0])
+            # instance_seg_image = instance_seg_image.transpose((1, 2, 0))
+            # instance_seg_image = instance_seg_image.numpy()
+            # import matplotlib
+            # matplotlib.use('tkAgg')
+            #
+            # import matplotlib.pyplot as plt
+            # for j in range(7):
+            #     instance_seg_image[:, :, j] = minmax_scale(
+            #         instance_seg_image[:, :, j])
+            # embedding_image = np.array(instance_seg_image).astype(np.uint8)
+            # for i in range(7):
+            #     plt.figure('instance_image' + str(i))
+            #     tt = embedding_image[:, :, i]
+            #     plt.imshow(tt)
+            # plt.show()
 
             # get lane points
             postprocessor.predict(pred[1], im_path)
