@@ -10,9 +10,8 @@ from .utils import split_path
 
 
 class Tusimple:
-    def __init__(self):
+    def __init__(self, num_classes=7, thresh=0.6):
         super(Tusimple, self).__init__()
-        # self.cfg = cfg
         exp_dir = "output"
         if not os.path.exists(exp_dir):
             os.mkdir(exp_dir)
@@ -24,7 +23,8 @@ class Tusimple:
             os.mkdir(self.view_dir)
 
         self.dump_to_json = []
-        self.thresh = 0.6  # cfg.evaluator.thresh
+        self.thresh = thresh
+        self.num_classes = num_classes
 
     def evaluate_pred(self, seg_pred, exist_pred, im_path):
         img_path = im_path
@@ -72,7 +72,7 @@ class Tusimple:
         for b in range(len(seg_pred)):
             seg = seg_pred[b]
             exist = [1 if exist_pred[b, i] >
-                          0.5 else 0 for i in range(7 - 1)]
+                          0.5 else 0 for i in range(self.num_classes - 1)]
             lane_coords = self.probmap2lane(seg, exist, thresh=self.thresh)
             for i in range(len(lane_coords)):
                 lane_coords[i] = sorted(
@@ -222,7 +222,7 @@ class Tusimple:
         H, W = resize_shape
         coordinates = []
 
-        for i in range(7 - 1):
+        for i in range(self.num_classes - 1):
             prob_map = seg_pred[i + 1]
             if smooth:
                 prob_map = cv2.blur(prob_map, (9, 9), borderType=cv2.BORDER_REPLICATE)
