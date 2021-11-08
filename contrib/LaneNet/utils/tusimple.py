@@ -16,6 +16,7 @@ class Tusimple:
         self.num_classes = num_classes
         self.save_dir = save_dir
         self.cut_height = cut_height
+        self.is_view = False
 
     def evaluate(self, output, im_path):
         seg_pred, exist_pred = output[0], output[1]
@@ -98,7 +99,7 @@ class Tusimple:
             for (x, y) in lane_coords[0]:
                 json_dict['h_sample'].append(y)
             self.dump_to_json.append(json.dumps(json_dict))
-            if True:
+            if self.is_view:
                 img = cv2.imread(img_path[b])
                 new_img_name = '_'.join(
                     [x for x in split_path(img_path[b])[-4:]])
