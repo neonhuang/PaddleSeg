@@ -2,7 +2,7 @@ batch_size: 4
 iters: 320000
 
 train_dataset:
-  type: LaneSegRsa
+  type: TusimpleSeg
   dataset_root: /home/work/resa/data/tusimple/
   transforms:
     - type: GroupRandomRotation
@@ -17,8 +17,8 @@ train_dataset:
   mode: train
 
 val_dataset:
-  type: LaneSegRsa
-  dataset_root: /home/work/resa/data/tusimple
+  type: TusimpleSeg
+  dataset_root: /home/work/resa/data/tusimple/
   transforms:
     - type: Resize
       target_size: [640, 368]

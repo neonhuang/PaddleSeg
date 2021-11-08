@@ -23,8 +23,8 @@ from transforms.transforms import Compose
 
 
 @manager.DATASETS.add_component
-class LaneSegRsa(paddle.io.Dataset):
-    NUM_CLASSES = 2
+class TusimpleSeg(paddle.io.Dataset):
+    NUM_CLASSES = 7
 
     def __init__(self, dataset_root=None, transforms=None, mode='train'):
         self.dataset_root = dataset_root
@@ -57,7 +57,7 @@ class LaneSegRsa(paddle.io.Dataset):
                                      'seg_label/list/test_gt.txt')
         else:
             file_path = os.path.join(self.dataset_root,
-                                     'training/test_part.txt')
+                                     'training/test_gt.txt')
 
         with open(file_path, 'r') as f:
             for line in f:
@@ -71,7 +71,6 @@ class LaneSegRsa(paddle.io.Dataset):
                             " image_name label_name\\n")
                     image_path = os.path.join(self.dataset_root, items[0])
                     label_path = None
-                    instance_path = None
                 else:
                     image_path = self.dataset_root + items[0]
                     label_path = self.dataset_root + items[1]
