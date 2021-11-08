@@ -1,7 +1,6 @@
 import paddle.nn.functional as F
 import json
 import os
-import os.path as osp
 import cv2
 import numpy as np
 
@@ -10,14 +9,13 @@ from .utils import split_path, mkdir
 
 
 class Tusimple:
-    def __init__(self, num_classes=7, thresh=0.6, save_dir='output'):
+    def __init__(self, num_classes=7, cut_height=160, thresh=0.6, save_dir='output'):
         super(Tusimple, self).__init__()
-        if not os.path.exists(save_dir):
-            os.mkdir(save_dir)
         self.dump_to_json = []
         self.thresh = thresh
         self.num_classes = num_classes
         self.save_dir = save_dir
+        self.cut_height = cut_height
 
     def evaluate(self, output, im_path):
         seg_pred, exist_pred = output[0], output[1]
@@ -169,7 +167,7 @@ class Tusimple:
             resize_shape = prob_map.shape
         h, w = prob_map.shape
         H, W = resize_shape
-        H -= 160  # self.cfg.cut_height
+        H -= self.cut_height
 
         coords = np.zeros(pts)
         coords[:] = -1.0

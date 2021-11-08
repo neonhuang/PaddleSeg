@@ -23,6 +23,13 @@ from . import infer
 from paddleseg.utils import logger, progbar
 from utils.utils import minmax_scale, to_png_fn, partition_list, makedirs
 from utils import tusimple
+from paddleseg.utils import logger, progbar, visualize
+
+
+def mkdir(path):
+    sub_dir = os.path.dirname(path)
+    if not os.path.exists(sub_dir):
+        os.makedirs(sub_dir)
 
 
 def predict(model,
@@ -52,27 +59,62 @@ def predict(model,
     else:
         img_lists = [image_list]
 
-    postprocessor = tusimple.Tusimple()
+    added_saved_dir = os.path.join(save_dir, 'added_prediction')
+    pred_saved_dir = os.path.join(save_dir, 'pseudo_color_prediction')
+
+    postprocessor = tusimple.Tusimple(save_dir=save_dir)
+    cut_height = 160
+
     logger.info("Start to predict...")
     progbar_pred = progbar.Progbar(target=len(img_lists[0]), verbose=1)
+    color_map = visualize.get_color_map_list(256, custom_color=None)
     with paddle.no_grad():
         for i, im_path in enumerate(img_lists[local_rank]):
             im = cv2.imread(im_path).astype('float32')
-            im = im[160:, :, :]
-            gt_image = im
+            ori_img = im
+            im = im[cut_height:, :, :]
+            cut_shape = im.shape[:2]
             im, _ = transforms(im)
-            # For lane tasks, image size remains the post-processed size
-            ori_shape = im.shape[1:]
-
             im = im[np.newaxis, ...]
             im = paddle.to_tensor(im)
 
             pred = infer.inference(
                 model,
                 im,
-                ori_shape=ori_shape,
+                ori_shape=cut_shape,
                 transforms=transforms.transforms)
 
-            postprocessor.predict(pred, im_path)
+            # get lane points
+            postprocessor.predict(pred[1], im_path)
+
+            pred = paddle.squeeze(pred[0])
+            pred = pred.numpy().astype('uint8')
+
+            mask = np.zeros(shape=ori_img.shape[:2], dtype=np.uint8)
+            mask[cut_height:, :] = pred
+            pred = mask
+
+            # get the saved name
+            if image_dir is not None:
+                im_file = im_path.replace(image_dir, '')
+            else:
+                im_file = os.path.basename(im_path)
+            if im_file[0] == '/' or im_file[0] == '\\':
+                im_file = im_file[1:]
+
+            # save added image
+            added_image = utils.visualize.visualize(
+                im_path, pred, color_map, weight=0.6)
+            added_image_path = os.path.join(added_saved_dir, im_file)
+            mkdir(added_image_path)
+            cv2.imwrite(added_image_path, added_image)
+
+            # save pseudo color prediction
+            pred_mask = utils.visualize.get_pseudo_color_map(pred, color_map)
+            pred_saved_path = os.path.join(
+                pred_saved_dir,
+                os.path.splitext(im_file)[0] + ".png")
+            mkdir(pred_saved_path)
+            pred_mask.save(pred_saved_path)
 
             progbar_pred.update(i + 1)
