@@ -76,7 +76,7 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
     batch_cost_averager = TimeAverager()
     batch_start = time.time()
     with paddle.no_grad():
-        for i, (im, label, data) in enumerate(tqdm(loader, desc=f'Validate')):
+        for i, (im, label, im_path) in enumerate(tqdm(loader, desc=f'Validate')):
             reader_cost_averager.record(time.time() - batch_start)
             label = label.astype('int64')
             # For lane tasks, use the post-processed size when evaluating
@@ -88,7 +88,7 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
                 ori_shape=ori_shape,
                 transforms=eval_dataset.transforms.transforms)
 
-            postprocessor.evaluate(pred, data)
+            postprocessor.evaluate(pred, im_path)
         best_acc, acc, fp, fn, eval_result = postprocessor.summarize()
         logger.info(eval_result)
     return best_acc, best_acc, best_acc, best_acc, best_acc, acc, fn, fp

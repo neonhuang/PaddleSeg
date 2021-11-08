@@ -35,8 +35,6 @@ class TusimpleSeg(paddle.io.Dataset):
         self.num_classes = self.NUM_CLASSES
         self.ignore_index = 255
         self.exist_list = []
-        self.img_name_list = []
-        self.full_img_path_list = []
 
         if mode not in ['train', 'val', 'test']:
             raise ValueError(
@@ -62,8 +60,6 @@ class TusimpleSeg(paddle.io.Dataset):
         with open(file_path, 'r') as f:
             for line in f:
                 items = line.strip().split()
-                self.img_name_list.append(items[0])
-                self.full_img_path_list.append(self.dataset_root + items[0])
                 if len(items) != 8:
                     if mode == 'train' or mode == 'val':
                         raise Exception(
@@ -91,11 +87,7 @@ class TusimpleSeg(paddle.io.Dataset):
 
         elif self.mode == 'val':
             im, label = self.transforms(im=image_path, label=label_path)
-            meta = {'full_img_path': self.full_img_path_list[idx],
-                    'img_name': self.img_name_list[idx]}
-
-            data = {'img': im, 'meta': meta}
-            return im, label, data
+            return im, label, image_path
         else:
             exist = self.exist_list[idx]
             im, label, = self.transforms(im=image_path, label=label_path)

@@ -26,8 +26,8 @@ class Tusimple:
         self.dump_to_json = []
         self.thresh = 0.6  # cfg.evaluator.thresh
 
-    def evaluate_pred(self, seg_pred, exist_pred, batch):
-        img_path = batch['meta']['full_img_path']
+    def evaluate_pred(self, seg_pred, exist_pred, im_path):
+        img_path = im_path
         lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
 
         for b in range(len(seg_pred)):
@@ -80,21 +80,21 @@ class Tusimple:
             lane_coords_list.append(lane_coords)
         return lane_coords_list
 
-    def evaluate(self, output, batch):
+    def evaluate(self, output, im_path):
         seg_pred, exist_pred = output[0], output[1]
         seg_pred = F.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.detach().cpu().numpy()
         exist_pred = exist_pred.detach().cpu().numpy()
-        self.evaluate_pred(seg_pred, exist_pred, batch)
+        self.evaluate_pred(seg_pred, exist_pred, im_path)
 
-    def predict(self, output, batch):
+    def predict(self, output, im_path):
         seg_pred, exist_pred = output[0], output[1]
         seg_pred = F.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.detach().cpu().numpy()
         exist_pred = exist_pred.detach().cpu().numpy()
 
-        img_name = batch
-        img_path = batch
+        img_name = im_path
+        img_path = im_path
         lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
 
         for b in range(len(seg_pred)):
