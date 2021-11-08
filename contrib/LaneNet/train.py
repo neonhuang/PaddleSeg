@@ -21,7 +21,7 @@ import numpy as np
 from paddleseg.cvlibs import manager, Config
 from paddleseg.utils import get_sys_env, logger, config_check
 from core.train import train
-from datasets import lane_seg_rsa
+from datasets import *
 from models.losses import *
 
 
