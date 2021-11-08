@@ -56,6 +56,9 @@ class Compose:
             im = cv2.imread(im).astype('float32')
         if isinstance(label, str):
             label = np.asarray(Image.open(label))
+            if len(label.shape) > 2:
+                label = label[:, :, 0]
+                label = label[160:, :]
         if im is None:
             raise ValueError('Can\'t read The image file {}!'.format(im))
         if self.to_rgb:
