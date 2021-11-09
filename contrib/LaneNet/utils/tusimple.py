@@ -106,9 +106,9 @@ class Tusimple:
 
     def prob2lines_tusimple(self, seg_pred, conf_pred):
         lane_coords_list = []
-        for b in range(len(seg_pred)):
-            seg = seg_pred[b]
-            conf = [1 if conf_pred[b, i] >
+        for batch in range(len(seg_pred)):
+            seg = seg_pred[batch]
+            conf = [1 if conf_pred[batch, i] >
                           0.5 else 0 for i in range(self.num_classes - 1)]
             lane_coords = self.probmap2lane(seg, conf, thresh=self.thresh)
             for i in range(len(lane_coords)):
@@ -122,6 +122,7 @@ class Tusimple:
             start = [i for i, x in enumerate(coordinate) if x > 0][0]
             end = [i for i, x in reversed(list(enumerate(coordinate))) if x > 0][0]
             lane = coordinate[start:end + 1]
+            # The line segment is not continuous
             if any(x < 0 for x in lane):
                 gap_start = [i for i, x in enumerate(
                     lane[:-1]) if x > 0 and lane[i + 1] < 0]
@@ -136,6 +137,7 @@ class Tusimple:
                             return coordinate
                         if id > gap_start[i] and id < gap_end[i]:
                             gap_width = float(gap_end[i] - gap_start[i])
+                            # line interpolation
                             lane[id] = int((id - gap_start[i]) / gap_width * lane[gap_end[i]] + (
                                     gap_end[i] - id) / gap_width * lane[gap_start[i]])
                 if not all(x > 0 for x in lane):
@@ -175,7 +177,8 @@ class Tusimple:
                 break
             line = prob_map[y, :]
             id = np.argmax(line)
-            if line[id] > thresh:
+            val = line[id]
+            if val > thresh:
                 coords[i] = int(id / w * W)
         if (coords > 0).sum() < 2:
             coords = np.zeros(pts)
@@ -190,7 +193,7 @@ class Tusimple:
         ----------
         seg_pred:      np.array size (5, h, w)
         resize_shape:  reshape size target, (H, W)
-        conf:       list of existence, e.g. [0, 1, 1, 0]
+        conf:        confidence of lanes, e.g. [0, 1, 1, 0]
         smooth:      whether to smooth the probability or not
         y_px_gap:    y pixel gap for sampling
         pts:     how many points for one lane
