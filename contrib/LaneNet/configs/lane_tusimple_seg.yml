@@ -6,15 +6,11 @@ train_dataset:
   dataset_root: /home/work/resa/data/tusimple/
   cut_height: 160
   transforms:
-    - type: GroupRandomRotation
-    - type: GroupRandomHorizontalFlip
+    - type: LaneRandomRotation
+    - type: RandomHorizontalFlip
     - type: Resize
       target_size: [640, 368]
-      interp: 'CUBIC'
-    - type: LaneNormalize
-      mean: [103.939, 116.779, 123.68]
-      std: [1., 1., 1.]
-
+    - type: Normalize
   mode: train
 
 val_dataset:
@@ -24,10 +20,7 @@ val_dataset:
   transforms:
     - type: Resize
       target_size: [640, 368]
-      interp: 'CUBIC'
-    - type: LaneNormalize
-      mean: [103.939, 116.779, 123.68]
-      std: [1., 1., 1.]
+    - type: Normalize
   mode: val
 
 optimizer:

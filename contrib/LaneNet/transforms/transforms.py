@@ -76,79 +76,41 @@ class Compose:
 
 
 @manager.TRANSFORMS.add_component
-class GroupRandomRotation:
-    def __init__(self, degree=(-10, 10), interpolation=(cv2.INTER_LINEAR, cv2.INTER_NEAREST), padding=None):
-        self.degree = degree
-        self.interpolation = interpolation
-        self.padding = padding
-        if self.padding is None:
-            self.padding = [0, 0]
+class LaneRandomRotation:
+    def __init__(self,
+                 max_rotation=10,
+                 im_padding_value=(0, 0, 0),
+                 label_padding_value=0):
+        self.max_rotation = max_rotation
+        self.im_padding_value = im_padding_value
+        self.label_padding_value = label_padding_value
 
     def __call__(self, im, label=None):
-        img_group = im, label
-        assert (len(self.interpolation) == len(img_group))
         v = random.random()
         if v < 0.5:
-            degree = random.uniform(self.degree[0], self.degree[1])
-            h, w = img_group[0].shape[0:2]
-            center = (w / 2, h / 2)
-            map_matrix = cv2.getRotationMatrix2D(center, degree, 1.0)
-            out_images = list()
-            for img, interpolation, padding in zip(img_group, self.interpolation, self.padding):
-                out_images.append(cv2.warpAffine(
-                    img, map_matrix, (w, h), flags=interpolation, borderMode=cv2.BORDER_CONSTANT, borderValue=padding))
-                if len(img.shape) > len(out_images[-1].shape):
-                    out_images[-1] = out_images[-1][...,
-                                                    np.newaxis]  # single channel image
-            return out_images
-        else:
-            return img_group
-
-
-@manager.TRANSFORMS.add_component
-class GroupRandomHorizontalFlip(object):
-    """Randomly horizontally flips the given numpy Image with a probability of 0.5
-    """
-
-    def __init__(self, is_flow=False):
-        self.is_flow = is_flow
-
-    def __call__(self, im, label=None, is_flow=False):
-        img_group = im, label
-        v = random.random()
-        if v < 0.5:
-            out_images = [np.fliplr(img) for img in img_group]
-            if self.is_flow:
-                for i in range(0, len(out_images), 2):
-                    # invert flow pixel values when flipping
-                    out_images[i] = -out_images[i]
-            return out_images
-        else:
-            return img_group
-
-
-@manager.TRANSFORMS.add_component
-class LaneNormalize:
-    def __init__(self, mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5)):
-        self.mean = mean
-        self.std = std
-        if not (isinstance(self.mean, (list, tuple))
-                and isinstance(self.std, (list, tuple))):
-            raise ValueError(
-                "{}: input type is invalid. It should be list or tuple".format(
-                    self))
-        from functools import reduce
-        if reduce(lambda x, y: x * y, self.std) == 0:
-            raise ValueError('{}: std is invalid!'.format(self))
-
-    def __call__(self, im, label=None):
-        mean = np.array(self.mean)[np.newaxis, np.newaxis, :]
-        std = np.array(self.std)[np.newaxis, np.newaxis, :]
-        im = im.astype(np.float32, copy=False)
-        im -= mean
-        im /= std
+            (h, w) = im.shape[:2]
+            do_rotation = np.random.uniform(-self.max_rotation, self.max_rotation)
+            pc = (w // 2, h // 2)
+            r = cv2.getRotationMatrix2D(pc, do_rotation, 1.0)
+            dsize = (w, h)
+            im = cv2.warpAffine(
+                im,
+                r,
+                dsize=dsize,
+                flags=cv2.INTER_LINEAR,
+                borderMode=cv2.BORDER_CONSTANT,
+                borderValue=self.im_padding_value)
+            if label is not None:
+                label = cv2.warpAffine(
+                    label,
+                    r,
+                    dsize=dsize,
+                    flags=cv2.INTER_NEAREST,
+                    borderMode=cv2.BORDER_CONSTANT,
+                    borderValue=self.label_padding_value)
 
         if label is None:
-            return (im,)
+            return (im, )
         else:
             return (im, label)
+
