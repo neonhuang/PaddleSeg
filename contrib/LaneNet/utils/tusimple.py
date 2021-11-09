@@ -7,12 +7,18 @@ import numpy as np
 from .lane import LaneEval
 from .utils import split_path, mkdir
 
-# this code heavily base on https://github.com/ZJULearning/resa/blob/main/runner/evaluator/tusimple/tusimple.py
+# this code heavily base on
+# https://github.com/ZJULearning/resa/blob/main/runner/evaluator/tusimple/tusimple.py
 # https://github.com/ZJULearning/resa/blob/main/datasets/tusimple.py
 
 
 class Tusimple:
-    def __init__(self, num_classes=2, cut_height=0, thresh=0.6, is_show=False, test_gt_json=None, save_dir='output/result'):
+    def __init__(self, num_classes=2,
+                 cut_height=0,
+                 thresh=0.6,
+                 is_show=False,
+                 test_gt_json=None,
+                 save_dir='output/result'):
         super(Tusimple, self).__init__()
         self.num_classes = num_classes
         self.cut_height = cut_height
@@ -20,7 +26,7 @@ class Tusimple:
         self.thresh = thresh
         self.save_dir = save_dir
         self.is_show = True
-        self.test_gt_json = "/home/work/resa/data/tusimple/test_label.json"
+        self.test_gt_json = test_gt_json
         self.color_map = [
             (255, 0, 0),
             (0, 255, 0),

@@ -61,7 +61,9 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
     )
 
     postprocessor = tusimple.Tusimple(num_classes=eval_dataset.num_classes,
-                                      cut_height=eval_dataset.cut_height)
+                                      cut_height=eval_dataset.cut_height,
+                                      test_gt_json=eval_dataset.test_gt_json,
+                                      )
 
     total_iters = len(loader)
 

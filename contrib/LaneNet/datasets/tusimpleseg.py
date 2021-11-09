@@ -36,6 +36,7 @@ class TusimpleSeg(paddle.io.Dataset):
         self.ignore_index = 255
         self.lanes_conf_list = []
         self.cut_height = cut_height
+        self.test_gt_json = os.path.join(self.dataset_root, 'test_label.json')
 
         if mode not in ['train', 'val', 'test']:
             raise ValueError(
