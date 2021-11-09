@@ -23,6 +23,7 @@ sys.path.append(os.path.join(LOCAL_PATH, '..', '..'))
 
 import yaml
 import numpy as np
+import paddle
 from paddle.inference import create_predictor, PrecisionType
 from paddle.inference import Config as PredictConfig
 
@@ -30,9 +31,8 @@ from paddleseg.cvlibs import manager
 from paddleseg.utils import get_sys_env, logger, get_image_list
 
 sys.path.append('..')
-from utils import lanenet_postprocess
-import transforms.lane_transforms as T
-from utils.utils import to_png_fn
+from utils import tusimple
+import transforms.transforms as T
 
 
 class DeployConfig:
@@ -63,7 +63,7 @@ class DeployConfig:
             ctype = t.pop('type')
             transforms.append(com[ctype](**t))
 
-        return T.LaneCompose(transforms, to_rgb=False)
+        return T.Compose(transforms, cut_height=160, to_rgb=False)
 
 
 class Predictor:
@@ -80,7 +80,6 @@ class Predictor:
         self._init_cpu_config()
 
         self.predictor = create_predictor(self.pred_cfg)
-        self.postprocessor = lanenet_postprocess.LaneNetPostProcessor()
 
     def _init_base_config(self):
         self.pred_cfg = PredictConfig(self.cfg.model, self.cfg.params)
@@ -110,17 +109,21 @@ class Predictor:
         input_handle = self.predictor.get_input_handle(input_names[0])
         output_names = self.predictor.get_output_names()
         output_seg_handle = self.predictor.get_output_handle(output_names[0])
-        output_emb_handle = self.predictor.get_output_handle(output_names[1])
+        output_conf_handle = self.predictor.get_output_handle(output_names[1])
 
         args = self.args
         if not os.path.exists(args.save_dir):
             os.makedirs(args.save_dir)
 
+        postprocessor = tusimple.Tusimple(num_classes=7,
+                                          cut_height=160)
+
         for i, im_path in enumerate(imgs):
             im = cv2.imread(im_path)
             gt_image = im
+            im = im[160:, :, :]
             im = im.astype('float32')
-            im, _, _ = self.cfg.transforms(im)
+            im, _ = self.cfg.transforms(im)
             im = im[np.newaxis, ...]
 
             input_handle.reshape(im.shape)
@@ -129,33 +132,11 @@ class Predictor:
             self.predictor.run()
 
             seg_results = output_seg_handle.copy_to_cpu()
-            emb_results = output_emb_handle.copy_to_cpu()
-            seg_results = seg_results[0].transpose((1, 2, 0))
-            seg_results = np.argmax(seg_results, axis=2)
+            conf_results = output_conf_handle.copy_to_cpu()
 
-            segLogits = seg_results
-            emLogits = emb_results[0]
-            binary_seg_image = segLogits.astype('int64')
-            instance_seg_image = emLogits.transpose((1, 2, 0))
-
-            postprocess_result = self.postprocessor.postprocess(
-                binary_seg_result=binary_seg_image,
-                instance_seg_result=instance_seg_image,
-                source_image=gt_image)
-
-            pred_binary_fn = os.path.join(
-                args.save_dir, to_png_fn(im_path, name='_pred_binary'))
-            pred_lane_fn = os.path.join(args.save_dir,
-                                        to_png_fn(im_path, name='_pred_lane'))
-            pred_instance_fn = os.path.join(
-                args.save_dir, to_png_fn(im_path, name='_pred_instance'))
-
-            cv2.imwrite(pred_binary_fn,
-                        np.array(binary_seg_image * 255).astype(np.uint8))
-            cv2.imwrite(pred_lane_fn, postprocess_result['source_image'])
-            cv2.imwrite(pred_instance_fn, postprocess_result['mask_image'])
-            print(pred_lane_fn, 'saved!')
-
+            # get lane points
+            seg_results = paddle.to_tensor([seg_results])
+            postprocessor.predict(seg_results, im_path)
         logger.info("Finish")
 
 

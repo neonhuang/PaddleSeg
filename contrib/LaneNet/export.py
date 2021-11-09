@@ -81,7 +81,7 @@ def main(args):
     yml_file = os.path.join(args.save_dir, 'deploy.yaml')
     with open(yml_file, 'w') as file:
         transforms = cfg.export_config.get('transforms', [
-            {'type': 'Resize', 'target_size': [512, 256]}, {'type': 'Normalize'}])
+            {'type': 'Resize', 'target_size': [640, 368]}, {'type': 'Normalize'}])
         data = {
             'Deploy': {
                 'transforms': transforms,
