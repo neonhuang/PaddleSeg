@@ -21,14 +21,18 @@ from paddleseg.cvlibs import manager
 
 
 @manager.LOSSES.add_component
-class LaneRsaBCELoss(nn.Layer):
+class LaneCrossEntropyLoss(nn.Layer):
     def __init__(self, ignore_index=255, data_format='NCHW'):
-        super(LaneRsaBCELoss, self).__init__()
+        super(LaneCrossEntropyLoss, self).__init__()
         self.ignore_index = ignore_index
+        self.EPS = 1e-8
 
     def forward(self, logit, label, semantic_weights=None):
-        label = label.astype('float32')
-        exist = logit
-        exist_loss = 0.1 * paddle.nn.BCEWithLogitsLoss()(exist, label)
+        seg_ouput = logit
+        temp = paddle.nn.functional.log_softmax(seg_ouput, axis=1)
+        weights = paddle.to_tensor([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+        weights[0] = 0.4
+        loss_func = paddle.nn.NLLLoss(ignore_index=255, weight=weights)
+        seg_loss = loss_func(temp, label)
 
-        return exist_loss
+        return seg_loss

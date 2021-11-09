@@ -40,12 +40,9 @@ def loss_computation(logits_list, labels, instance_labels, losses):
         loss_i = losses['types'][i]
         loss_name = loss_i.__class__.__name__
 
-        if loss_name in "DiscriminativeLoss":
-            loss_list.append(
-                losses['coef'][i] * loss_i(logits, instance_labels))
-        elif loss_name in "LaneCrossEntropyLoss":
+        if loss_name in "LaneCrossEntropyLoss":
             loss_list.append(losses['coef'][i] * loss_i(logits, labels))
-        elif loss_name in "LaneRsaBCELoss":
+        elif loss_name in "LaneBCELoss":
             loss_list.append(losses['coef'][i] * loss_i(logits, instance_labels))
         else:
             loss_list.append(losses['coef'][i] * loss_i(logits, labels))

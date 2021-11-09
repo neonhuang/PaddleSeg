@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lane_rsa_bce_loss import LaneRsaBCELoss
-from .lane_rsa_cross_entropy_loss import LaneRsaCrossEntropyLoss
+from .lane_bce_loss import LaneBCELoss
+from .lane_cross_entropy_loss import LaneCrossEntropyLoss
