@@ -85,23 +85,6 @@ def predict(model,
                 ori_shape=cut_shape,
                 transforms=transforms.transforms)
 
-            # instance_seg_image = paddle.squeeze(pred[1][0])
-            # instance_seg_image = instance_seg_image.transpose((1, 2, 0))
-            # instance_seg_image = instance_seg_image.numpy()
-            # import matplotlib
-            # matplotlib.use('tkAgg')
-            #
-            # import matplotlib.pyplot as plt
-            # for j in range(7):
-            #     instance_seg_image[:, :, j] = minmax_scale(
-            #         instance_seg_image[:, :, j])
-            # embedding_image = np.array(instance_seg_image).astype(np.uint8)
-            # for i in range(7):
-            #     plt.figure('instance_image' + str(i))
-            #     tt = embedding_image[:, :, i]
-            #     plt.imshow(tt)
-            # plt.show()
-
             # get lane points
             postprocessor.predict(pred[1], im_path)
 
