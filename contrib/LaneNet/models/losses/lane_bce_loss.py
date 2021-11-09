@@ -14,8 +14,6 @@
 
 import paddle
 from paddle import nn
-import paddle.nn.functional as F
-import numpy as np
 
 from paddleseg.cvlibs import manager
 
