@@ -36,8 +36,8 @@ lr_scheduler:
 
 loss:
   types:
-    - type: LaneRsaCrossEntropyLoss
-    - type: LaneRsaBCELoss
+    - type: LaneCrossEntropyLoss
+    - type: LaneBCELoss
   coef: [1, 1]
 
 model:

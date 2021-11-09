@@ -22,13 +22,12 @@ from paddleseg.cvlibs import manager
 
 @manager.LOSSES.add_component
 class LaneBCELoss(nn.Layer):
-    def __init__(self, ignore_index=255, data_format='NCHW'):
+    def __init__(self, ignore_index=255, weight=0.1, data_format='NCHW'):
         super(LaneBCELoss, self).__init__()
         self.ignore_index = ignore_index
+        self.weight = weight
 
     def forward(self, logit, label, semantic_weights=None):
         label = label.astype('float32')
-        exist = logit
-        exist_loss = 0.1 * paddle.nn.BCEWithLogitsLoss()(exist, label)
-
-        return exist_loss
+        conf_loss = self.weight * paddle.nn.BCEWithLogitsLoss()(logit, label)
+        return conf_loss
