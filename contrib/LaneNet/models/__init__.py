@@ -12,14 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .lanenet_enet import LaneEnet
-from .lanenet_bisenet import LaneBiseNet
-from .lanenet_fcn import LaneFCN
-from .vgg import *
-from .fcn import *
-from .fast_scnn import *
-from .hardnet import *
-from .unet import *
-from .bisenet import *
 from .bisenet_rsa import *
-from .pphumanseg_lite import *
