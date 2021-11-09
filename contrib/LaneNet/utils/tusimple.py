@@ -25,7 +25,7 @@ class Tusimple:
         self.dump_to_json = []
         self.thresh = thresh
         self.save_dir = save_dir
-        self.is_show = True
+        self.is_show = False
         self.test_gt_json = test_gt_json
         self.color_map = [
             (255, 0, 0),
