@@ -61,7 +61,8 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
         return_list=True,
     )
 
-    postprocessor = tusimple.Tusimple(val_dataset=eval_dataset)
+    postprocessor = tusimple.Tusimple(num_classes=eval_dataset.num_classes,
+                                      cut_height=eval_dataset.cut_height)
 
     total_iters = len(loader)
 
@@ -89,7 +90,7 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
                 transforms=eval_dataset.transforms.transforms)
 
             postprocessor.evaluate(pred[1], im_path)
-        best_acc, acc, fp, fn, eval_result = postprocessor.summarize()
+        acc, fp, fn, eval_result = postprocessor.calculate_eval()
         logger.info(eval_result)
-    return best_acc, best_acc, best_acc, best_acc, best_acc, acc, fn, fp
+    return acc, acc, acc, acc, acc, acc, fn, fp
     # return miou, acc, class_iou, class_acc, kappa, acc_lane[0], fn_lane[0], fp_lane[0]

@@ -34,7 +34,7 @@ class TusimpleSeg(paddle.io.Dataset):
         self.file_list = list()
         self.num_classes = self.NUM_CLASSES
         self.ignore_index = 255
-        self.exist_list = []
+        self.lanes_conf_list = []
         self.cut_height = cut_height
 
         if mode not in ['train', 'val', 'test']:
@@ -71,7 +71,7 @@ class TusimpleSeg(paddle.io.Dataset):
                 else:
                     image_path = self.dataset_root + items[0]
                     label_path = self.dataset_root + items[1]
-                    self.exist_list.append(
+                    self.lanes_conf_list.append(
                         np.array([int(items[2]), int(items[3]),
                                   int(items[4]), int(items[5]),
                                   int(items[6]), int(items[7])
@@ -90,9 +90,9 @@ class TusimpleSeg(paddle.io.Dataset):
             im, label = self.transforms(im=image_path, label=label_path)
             return im, label, image_path
         else:
-            exist = self.exist_list[idx]
+            conf = self.lanes_conf_list[idx]
             im, label, = self.transforms(im=image_path, label=label_path)
-            return im, label, exist
+            return im, label, conf
 
     def __len__(self):
         return len(self.file_list)

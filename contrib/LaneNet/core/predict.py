@@ -63,8 +63,9 @@ def predict(model,
     pred_saved_dir = os.path.join(save_dir, 'pseudo_color_prediction')
     transforms = val_dataset.transforms
     cut_height = val_dataset.cut_height
-    postprocessor = tusimple.Tusimple(val_dataset=val_dataset, save_dir=save_dir)
-
+    postprocessor = tusimple.Tusimple(num_classes=val_dataset.num_classes,
+                                      cut_height=cut_height,
+                                      save_dir=save_dir)
     logger.info("Start to predict...")
     progbar_pred = progbar.Progbar(target=len(img_lists[0]), verbose=1)
     color_map = visualize.get_color_map_list(256, custom_color=None)

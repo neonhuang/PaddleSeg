@@ -1,4 +1,4 @@
-import paddle.nn.functional as F
+import paddle.nn as nn
 import json
 import os
 import cv2
@@ -9,29 +9,30 @@ from .utils import split_path, mkdir
 
 
 class Tusimple:
-    def __init__(self, val_dataset, thresh=0.6, save_dir='output'):
+    def __init__(self, num_classes=2, cut_height=0, thresh=0.6, is_show=False, test_gt_json=None, save_dir='output/result'):
         super(Tusimple, self).__init__()
-        self.num_classes = val_dataset.num_classes
-        self.cut_height = val_dataset.cut_height
+        self.num_classes = num_classes
+        self.cut_height = cut_height
         self.dump_to_json = []
         self.thresh = thresh
         self.save_dir = save_dir
-        self.is_view = False
+        self.is_show = True
+        self.test_gt_json = "/home/work/resa/data/tusimple/test_label.json"
 
     def evaluate(self, output, im_path):
-        seg_pred, exist_pred = output[0], output[1]
-        seg_pred = F.softmax(seg_pred, axis=1)
+        seg_pred, conf_pred = output[0], output[1]
+        seg_pred = nn.functional.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.numpy()
-        exist_pred = exist_pred.numpy()
-        self.generate_files(seg_pred, exist_pred, im_path)
+        conf_pred = conf_pred.numpy()
+        self.generate_files(seg_pred, conf_pred, im_path)
 
     def predict(self, output, im_path):
-        seg_pred, exist_pred = output[0], output[1]
-        seg_pred = F.softmax(seg_pred, axis=1)
+        seg_pred, conf_pred = output[0], output[1]
+        seg_pred = nn.functional.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.numpy()
-        exist_pred = exist_pred.numpy()
+        conf_pred = conf_pred.numpy()
         img_path = im_path
-        lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
+        lane_coords_list = self.prob2lines_tusimple(seg_pred, conf_pred)
 
         for b in range(len(seg_pred)):
             lane_coords = lane_coords_list[b]
@@ -41,19 +42,15 @@ class Tusimple:
                 saved_path = os.path.join(self.save_dir, 'points', im_file)
                 self.draw(img, lane_coords, saved_path)
 
-    def summarize(self):
-        best_acc = 0
+    def calculate_eval(self):
         output_file = os.path.join(self.save_dir, 'predict_test.json')
         with open(output_file, "w+") as f:
             for line in self.dump_to_json:
                 print(line, end="\n", file=f)
 
-        eval_result, acc, fp, fn = LaneEval.bench_one_submit(output_file,
-                                                             "/home/work/resa/data/tusimple/test_label.json")
-
+        eval_rst, acc, fp, fn = LaneEval.bench_one_submit(output_file, self.test_gt_json)
         self.dump_to_json = []
-        best_acc = max(acc, best_acc)
-        return best_acc, acc, fp, fn, eval_result
+        return acc, fp, fn, eval_rst
 
     def draw(self, img, coords, file_path=None):
         for coord in coords:
@@ -67,9 +64,9 @@ class Tusimple:
             mkdir(file_path)
             cv2.imwrite(file_path, img)
 
-    def generate_files(self, seg_pred, exist_pred, im_path):
+    def generate_files(self, seg_pred, conf_pred, im_path):
         img_path = im_path
-        lane_coords_list = self.prob2lines_tusimple(seg_pred, exist_pred)
+        lane_coords_list = self.prob2lines_tusimple(seg_pred, conf_pred)
 
         coord_path = os.path.join(self.save_dir, "coord_output")
         for b in range(len(seg_pred)):
@@ -99,7 +96,7 @@ class Tusimple:
             for (x, y) in lane_coords[0]:
                 json_dict['h_sample'].append(y)
             self.dump_to_json.append(json.dumps(json_dict))
-            if self.is_view:
+            if self.is_show:
                 img = cv2.imread(img_path[b])
                 new_img_name = '_'.join(
                     [x for x in split_path(img_path[b])[-4:]])
@@ -107,13 +104,13 @@ class Tusimple:
                 saved_path = os.path.join(self.save_dir, 'vis', new_img_name)
                 self.draw(img, lane_coords, saved_path)
 
-    def prob2lines_tusimple(self, seg_pred, exist_pred):
+    def prob2lines_tusimple(self, seg_pred, conf_pred):
         lane_coords_list = []
         for b in range(len(seg_pred)):
             seg = seg_pred[b]
-            exist = [1 if exist_pred[b, i] >
+            conf = [1 if conf_pred[b, i] >
                           0.5 else 0 for i in range(self.num_classes - 1)]
-            lane_coords = self.probmap2lane(seg, exist, thresh=self.thresh)
+            lane_coords = self.probmap2lane(seg, conf, thresh=self.thresh)
             for i in range(len(lane_coords)):
                 lane_coords[i] = sorted(
                     lane_coords[i], key=lambda pair: pair[1])
@@ -187,13 +184,13 @@ class Tusimple:
 
         return coords
 
-    def probmap2lane(self, seg_pred, exist, resize_shape=(720, 1280), smooth=True, y_px_gap=10, pts=56, thresh=0.6):
+    def probmap2lane(self, seg_pred, conf, resize_shape=(720, 1280), smooth=True, y_px_gap=10, pts=56, thresh=0.6):
         """
         Arguments:
         ----------
         seg_pred:      np.array size (5, h, w)
         resize_shape:  reshape size target, (H, W)
-        exist:       list of existence, e.g. [0, 1, 1, 0]
+        conf:       list of existence, e.g. [0, 1, 1, 0]
         smooth:      whether to smooth the probability or not
         y_px_gap:    y pixel gap for sampling
         pts:     how many points for one lane
