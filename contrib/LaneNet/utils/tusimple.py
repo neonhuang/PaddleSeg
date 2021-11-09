@@ -7,6 +7,9 @@ import numpy as np
 from .lane import LaneEval
 from .utils import split_path, mkdir
 
+# this code heavily base on https://github.com/ZJULearning/resa/blob/main/runner/evaluator/tusimple/tusimple.py
+# https://github.com/ZJULearning/resa/blob/main/datasets/tusimple.py
+
 
 class Tusimple:
     def __init__(self, num_classes=2, cut_height=0, thresh=0.6, is_show=False, test_gt_json=None, save_dir='output/result'):
@@ -30,19 +33,17 @@ class Tusimple:
         ]
 
     def evaluate(self, output, im_path):
-        seg_pred, conf_pred = output[0], output[1]
+        seg_pred = output[0]
         seg_pred = nn.functional.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.numpy()
-        conf_pred = conf_pred.numpy()
-        self.generate_files(seg_pred, conf_pred, im_path)
+        self.generate_files(seg_pred, im_path)
 
     def predict(self, output, im_path):
-        seg_pred, conf_pred = output[0], output[1]
+        seg_pred = output[0]
         seg_pred = nn.functional.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.numpy()
-        conf_pred = conf_pred.numpy()
         img_path = im_path
-        lane_coords_list = self.prob2lines_tusimple(seg_pred, conf_pred)
+        lane_coords_list = self.prob2lines_tusimple(seg_pred)
 
         for batch in range(len(seg_pred)):
             lane_coords = lane_coords_list[batch]
@@ -74,9 +75,9 @@ class Tusimple:
             mkdir(file_path)
             cv2.imwrite(file_path, img)
 
-    def generate_files(self, seg_pred, conf_pred, im_path):
+    def generate_files(self, seg_pred, im_path):
         img_path = im_path
-        lane_coords_list = self.prob2lines_tusimple(seg_pred, conf_pred)
+        lane_coords_list = self.prob2lines_tusimple(seg_pred)
 
         coord_path = os.path.join(self.save_dir, "coord_output")
         for batch in range(len(seg_pred)):
@@ -114,13 +115,11 @@ class Tusimple:
                 saved_path = os.path.join(self.save_dir, 'vis', new_img_name)
                 self.draw(img, lane_coords, saved_path)
 
-    def prob2lines_tusimple(self, seg_pred, conf_pred):
+    def prob2lines_tusimple(self, seg_pred):
         lane_coords_list = []
         for batch in range(len(seg_pred)):
             seg = seg_pred[batch]
-            conf = [1 if conf_pred[batch, i] >
-                          0.5 else 0 for i in range(self.num_classes - 1)]
-            lane_coords = self.probmap2lane(seg, conf, thresh=self.thresh)
+            lane_coords = self.probmap2lane(seg, thresh=self.thresh)
             for i in range(len(lane_coords)):
                 lane_coords[i] = sorted(
                     lane_coords[i], key=lambda pair: pair[1])
@@ -197,13 +196,12 @@ class Tusimple:
 
         return coords
 
-    def probmap2lane(self, seg_pred, conf, resize_shape=(720, 1280), smooth=True, y_px_gap=10, pts=56, thresh=0.6):
+    def probmap2lane(self, seg_pred, resize_shape=(720, 1280), smooth=True, y_px_gap=10, pts=56, thresh=0.6):
         """
         Arguments:
         ----------
         seg_pred:      np.array size (5, h, w)
         resize_shape:  reshape size target, (H, W)
-        conf:        confidence of lanes, e.g. [0, 1, 1, 0]
         smooth:      whether to smooth the probability or not
         y_px_gap:    y pixel gap for sampling
         pts:     how many points for one lane
