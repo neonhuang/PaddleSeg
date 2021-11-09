@@ -41,7 +41,7 @@ loss:
   coef: [1, 1]
 
 model:
-  type: BiSeNetRsa
+  type: BiSeNetLane
   pretrained: Null
 
 

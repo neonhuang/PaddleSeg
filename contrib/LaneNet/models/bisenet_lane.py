@@ -24,7 +24,7 @@ from paddleseg.models import layers
 
 
 @manager.MODELS.add_component
-class BiSeNetRsa(nn.Layer):
+class BiSeNetLane(nn.Layer):
     """
     The BiSeNet V2 implementation based on PaddlePaddle.
 
