@@ -18,7 +18,6 @@ import paddle
 from tqdm import tqdm
 from paddleseg.utils import metrics, TimeAverager, calculate_eta, logger, progbar
 from . import infer
-from utils.metrics_utils import *
 from utils import tusimple
 
 
