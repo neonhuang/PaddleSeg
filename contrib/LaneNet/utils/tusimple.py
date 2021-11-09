@@ -64,12 +64,12 @@ class Tusimple:
         return acc, fp, fn, eval_rst
 
     def draw(self, img, coords, file_path=None):
-        for coord in coords:
+        for i, coord in enumerate(coords):
             for x, y in coord:
                 if x <= 0 or y <= 0:
                     continue
                 x, y = int(x), int(y)
-                cv2.circle(img, (x, y), 4, (255, 0, 0), 2)
+                cv2.circle(img, (x, y), 4, self.color_map[i % self.num_classes], 2)
 
         if file_path is not None:
             mkdir(file_path)
