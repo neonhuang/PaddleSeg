@@ -18,6 +18,16 @@ class Tusimple:
         self.save_dir = save_dir
         self.is_show = True
         self.test_gt_json = "/home/work/resa/data/tusimple/test_label.json"
+        self.color_map = [
+            (255, 0, 0),
+            (0, 255, 0),
+            (0, 0, 255),
+            (125, 125, 0),
+            (0, 125, 125),
+            (125, 0, 125),
+            (50, 100, 50),
+            (100, 50, 100)
+        ]
 
     def evaluate(self, output, im_path):
         seg_pred, conf_pred = output[0], output[1]
@@ -34,8 +44,8 @@ class Tusimple:
         img_path = im_path
         lane_coords_list = self.prob2lines_tusimple(seg_pred, conf_pred)
 
-        for b in range(len(seg_pred)):
-            lane_coords = lane_coords_list[b]
+        for batch in range(len(seg_pred)):
+            lane_coords = lane_coords_list[batch]
             if True:
                 img = cv2.imread(img_path)
                 im_file = os.path.basename(im_path)
@@ -69,9 +79,9 @@ class Tusimple:
         lane_coords_list = self.prob2lines_tusimple(seg_pred, conf_pred)
 
         coord_path = os.path.join(self.save_dir, "coord_output")
-        for b in range(len(seg_pred)):
-            lane_coords = lane_coords_list[b]
-            path_tree = split_path(img_path[b])
+        for batch in range(len(seg_pred)):
+            lane_coords = lane_coords_list[batch]
+            path_tree = split_path(img_path[batch])
             save_dir, save_name = path_tree[-3:-1], path_tree[-1]
             save_dir = os.path.join(coord_path, *save_dir)
             save_name = os.path.join(save_dir, save_name[:-3] + "lines.txt")
@@ -97,9 +107,9 @@ class Tusimple:
                 json_dict['h_sample'].append(y)
             self.dump_to_json.append(json.dumps(json_dict))
             if self.is_show:
-                img = cv2.imread(img_path[b])
+                img = cv2.imread(img_path[batch])
                 new_img_name = '_'.join(
-                    [x for x in split_path(img_path[b])[-4:]])
+                    [x for x in split_path(img_path[batch])[-4:]])
 
                 saved_path = os.path.join(self.save_dir, 'vis', new_img_name)
                 self.draw(img, lane_coords, saved_path)
