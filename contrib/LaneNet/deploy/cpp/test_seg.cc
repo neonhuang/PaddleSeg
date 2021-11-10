@@ -15,9 +15,9 @@
 using namespace std;
 using namespace cv;
 
-DEFINE_string(model_dir, "/Users/huangshenghui/PP/PaddleSeg/contrib/LaneNet/output", "Directory of the inference model. "
+DEFINE_string(model_dir, "", "Directory of the inference model. "
                              "It constains deploy.yaml and infer models");
-DEFINE_string(img_path, "/Users/huangshenghui/PP/PaddleSeg/contrib/LaneNet/data/test_images/0.jpg", "Path of the test image.");
+DEFINE_string(img_path, "", "Path of the test image.");
 DEFINE_bool(use_cpu, false, "Wether use CPU. Default: use GPU.");
 DEFINE_string(save_dir, "", "Directory of the output image.");
 
