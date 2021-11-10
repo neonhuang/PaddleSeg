@@ -18,14 +18,14 @@ class Tusimple:
                  thresh=0.6,
                  is_show=False,
                  test_gt_json=None,
-                 save_dir='output/result'):
+                 save_dir='output/eval'):
         super(Tusimple, self).__init__()
         self.num_classes = num_classes
         self.cut_height = cut_height
         self.dump_to_json = []
         self.thresh = thresh
         self.save_dir = save_dir
-        self.is_show = False
+        self.is_show = is_show
         self.test_gt_json = test_gt_json
         self.color_map = [
             (255, 0, 0),
