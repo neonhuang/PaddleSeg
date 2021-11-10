@@ -60,7 +60,7 @@ class Compose:
             label = np.asarray(Image.open(label))
             if len(label.shape) > 2:
                 label = label[:, :, 0]
-                label = label[self.cut_height:, :]
+            label = label[self.cut_height:, :]
         if im is None:
             raise ValueError('Can\'t read The image file {}!'.format(im))
         if self.to_rgb:
