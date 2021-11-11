@@ -19,9 +19,6 @@ train_dataset:
       saturation_prob: 1
       hue_range: 63
       hue_prob: 1
-    - type: RandomBlur
-      prob: 0.5
-      blur_type: random
     - type: RandomNoise
     - type: Normalize
   mode: train
