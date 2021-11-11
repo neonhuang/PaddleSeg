@@ -93,5 +93,4 @@ def evaluate(model, eval_dataset, num_workers=0, print_detail=True):
             postprocessor.evaluate(pred[1], im_path)
         acc, fp, fn, eval_result = postprocessor.calculate_eval()
         logger.info(eval_result)
-    return acc, acc, acc, acc, acc, acc, fn, fp
-    # return miou, acc, class_iou, class_acc, kappa, acc_lane[0], fn_lane[0], fp_lane[0]
+    return acc, fn, fp
