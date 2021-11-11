@@ -85,20 +85,9 @@ class Tusimple:
         img_path = im_path
         lane_coords_list = self.prob2lines_tusimple(seg_pred)
 
-        coord_path = os.path.join(self.save_dir, "coord_output")
         for batch in range(len(seg_pred)):
             lane_coords = lane_coords_list[batch]
             path_tree = split_path(img_path[batch])
-            save_dir, save_name = path_tree[-3:-1], path_tree[-1]
-            save_dir = os.path.join(coord_path, *save_dir)
-            save_name = os.path.join(save_dir, save_name[:-3] + "lines.txt")
-            mkdir(save_name)
-            with open(save_name, "w") as f:
-                for l in lane_coords:
-                    for (x, y) in l:
-                        print("{} {}".format(x, y), end=" ", file=f)
-                    print(file=f)
-
             json_dict = {}
             json_dict['lanes'] = []
             json_dict['h_sample'] = []
@@ -132,7 +121,7 @@ class Tusimple:
             lane_coords_list.append(lane_coords)
         return lane_coords_list
 
-    def fix_gap(self, coordinate):
+    def deal_gap(self, coordinate):
         if any(x > 0 for x in coordinate):
             start = [i for i, x in enumerate(coordinate) if x > 0][0]
             end = [i for i, x in reversed(list(enumerate(coordinate))) if x > 0][0]
@@ -197,9 +186,7 @@ class Tusimple:
                 coords[i] = int(id / w * W)
         if (coords > 0).sum() < 2:
             coords = np.zeros(pts)
-        self.fix_gap(coords)
-        # print(coords.shape)
-
+        self.deal_gap(coords)
         return coords
 
     def probmap2lane(self, seg_pred, resize_shape=(720, 1280), smooth=True, y_px_gap=10, pts=56, thresh=0.6):
