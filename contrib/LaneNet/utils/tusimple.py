@@ -90,11 +90,10 @@ class Tusimple:
 
         for batch in range(len(seg_pred)):
             lane_coords = lane_coords_list[batch]
-            path_tree = split_path(img_path[batch])
             json_dict = {}
             json_dict['lanes'] = []
             json_dict['h_sample'] = []
-            json_dict['raw_file'] = os.path.join(*path_tree[-4:])
+            json_dict['raw_file'] = os.path.join(*split_path(img_path[batch])[-4:])
             json_dict['run_time'] = 0
             for l in lane_coords:
                 if len(l) == 0:
