@@ -27,6 +27,9 @@ class Tusimple:
         self.save_dir = save_dir
         self.is_show = is_show
         self.test_gt_json = test_gt_json
+        self.smooth=True    # whether to smooth the probability or not
+        self.y_px_gap=10    # y pixel gap for sampling
+        self.pts=56     # y pixel gap for sampling
         self.color_map = [
             (255, 0, 0),
             (0, 255, 0),
@@ -156,7 +159,7 @@ class Tusimple:
         else:
             return 0
 
-    def get_coords(self, prob_map, y_px_gap, pts, thresh, resize_shape=None):
+    def get_coords(self, prob_map, thresh, resize_shape=None):
         """
         Arguments:
         ----------
@@ -173,10 +176,10 @@ class Tusimple:
         H, W = resize_shape
         H -= self.cut_height
 
-        coords = np.zeros(pts)
+        coords = np.zeros(self.pts)
         coords[:] = -1.0
-        for i in range(pts):
-            y = int((H - 10 - i * y_px_gap) * h / H)
+        for i in range(self.pts):
+            y = int((H - 10 - i * self.y_px_gap) * h / H)
             if y < 0:
                 break
             line = prob_map[y, :]
@@ -185,19 +188,16 @@ class Tusimple:
             if val > thresh:
                 coords[i] = int(id / w * W)
         if (coords > 0).sum() < 2:
-            coords = np.zeros(pts)
+            coords = np.zeros(self.pts)
         self.deal_gap(coords)
         return coords
 
-    def get_lane_from_seg(self, seg_pred, resize_shape=(720, 1280), smooth=True, y_px_gap=10, pts=56, thresh=0.6):
+    def get_lane_from_seg(self, seg_pred, resize_shape=(720, 1280), thresh=0.6):
         """
         Arguments:
         ----------
         seg_pred:      np.array size (5, h, w)
         resize_shape:  reshape size target, (H, W)
-        smooth:      whether to smooth the probability or not
-        y_px_gap:    y pixel gap for sampling
-        pts:     how many points for one lane
         thresh:  probability threshold
 
         Return:
@@ -212,24 +212,24 @@ class Tusimple:
 
         for i in range(self.num_classes - 1):
             prob_map = seg_pred[i + 1]
-            if smooth:
+            if self.smooth:
                 prob_map = cv2.blur(prob_map, (9, 9), borderType=cv2.BORDER_REPLICATE)
-            coords = self.get_coords(prob_map, y_px_gap, pts, thresh, resize_shape)
+            coords = self.get_coords(prob_map, thresh, resize_shape)
             if self.is_short(coords):
                 continue
-            self.add_coords(coordinates, coords, y_px_gap, H, pts)
+            self.add_coords(coordinates, coords, H)
 
         if len(coordinates) == 0:
-            coords = np.zeros(pts)
-            self.add_coords(coordinates, coords, y_px_gap, H, pts)
+            coords = np.zeros(self.pts)
+            self.add_coords(coordinates, coords, H)
         return coordinates
 
-    def add_coords(self, coordinates, coords, y_px_gap, H, pts):
+    def add_coords(self, coordinates, coords, H):
         sub_lanes = []
-        for j in range(pts):
+        for j in range(self.pts):
             if coords[j] > 0:
-                val = [coords[j], H - 10 - j * y_px_gap]
+                val = [coords[j], H - 10 - j * self.y_px_gap]
             else:
-                val = [-1, H - 10 - j * y_px_gap]
+                val = [-1, H - 10 - j * self.y_px_gap]
             sub_lanes.append(val)
         coordinates.append(sub_lanes)
