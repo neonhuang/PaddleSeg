@@ -29,7 +29,7 @@ val_dataset:
   cut_height: 160
   transforms:
     - type: Resize
-      target_size: [640, 368]
+      target_size: [512, 256]
     - type: Normalize
   mode: val
 
