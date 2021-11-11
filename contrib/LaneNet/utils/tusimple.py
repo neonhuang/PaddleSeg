@@ -230,15 +230,19 @@ class Tusimple:
             coords = self.get_lane(prob_map, y_px_gap, pts, thresh, resize_shape)
             if self.is_short(coords):
                 continue
-            coordinates.append(
-                [[coords[j], H - 10 - j * y_px_gap] if coords[j] > 0 else [-1, H - 10 - j * y_px_gap] for j in
-                 range(pts)])
+            self.add_coords(coordinates, coords, y_px_gap, H, pts)
 
         if len(coordinates) == 0:
             coords = np.zeros(pts)
-            coordinates.append(
-                [[coords[j], H - 10 - j * y_px_gap] if coords[j] > 0 else [-1, H - 10 - j * y_px_gap] for j in
-                 range(pts)])
-        # print(coordinates)
-
+            self.add_coords(coordinates, coords, y_px_gap, H, pts)
         return coordinates
+
+    def add_coords(self, coordinates, coords, y_px_gap, H, pts):
+        sub_lanes = []
+        for j in range(pts):
+            if coords[j] > 0:
+                val = [coords[j], H - 10 - j * y_px_gap]
+            else:
+                val = [-1, H - 10 - j * y_px_gap]
+            sub_lanes.append(val)
+        coordinates.append(sub_lanes)
