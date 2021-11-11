@@ -60,8 +60,7 @@ class BiSeNetLane(nn.Layer):
         self.aux_head3 = SegHead(C4, C4, num_classes)
         self.aux_head4 = SegHead(C5, C5, num_classes)
         self.seg_head = SegHead(mid_channels, mid_channels, 7)
-        # self.emb_head = SegHead(mid_channels, mid_channels, 4)
-        self.heads = ExistHead()
+        # self.heads = ExistHead()
 
         self.align_corners = align_corners
         self.pretrained = pretrained
@@ -72,7 +71,7 @@ class BiSeNetLane(nn.Layer):
         feat1, feat2, feat3, feat4, sfm = self.sb(x)
         agr = self.bga(dfm, sfm)
         seg_logit = self.seg_head(agr)
-        exist = self.heads(agr)
+        # exist = self.heads(agr)
         # emb_logit = self.emb_head(agr)
 
         logit_list = [seg_logit]
@@ -85,7 +84,7 @@ class BiSeNetLane(nn.Layer):
                 align_corners=self.align_corners) for logit in logit_list
         ]
 
-        logit_list.append(exist)
+        # logit_list.append(exist)
         return logit_list
 
     def init_weight(self):
