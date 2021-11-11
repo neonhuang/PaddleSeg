@@ -12,13 +12,16 @@
 #include "opencv2/core.hpp"
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
+#include "lane_postprocess.hpp"
+
 using namespace std;
 using namespace cv;
 
-DEFINE_string(model_dir, "", "Directory of the inference model. "
+DEFINE_string(model_dir, "/Users/huangshenghui/PP/PaddleSeg/contrib/LaneNet/output", "Directory of the inference model. "
                              "It constains deploy.yaml and infer models");
-DEFINE_string(img_path, "", "Path of the test image.");
+DEFINE_string(img_path, "/Users/huangshenghui/PP/PaddleSeg/contrib/LaneNet/data/test_images/0.jpg", "Path of the test image.");
 DEFINE_bool(use_cpu, false, "Wether use CPU. Default: use GPU.");
+
 DEFINE_string(save_dir, "", "Directory of the output image.");
 
 typedef struct YamlConfig {
@@ -83,12 +86,13 @@ void process_image(const YamlConfig& yaml_config, cv::Mat& img) {
     }
 }
 
-
 int main(int argc, char *argv[]) {
     google::ParseCommandLineFlags(&argc, &argv, true);
     if (FLAGS_model_dir == "") {
     LOG(FATAL) << "The model_dir should not be empty.";
     }
+    
+    LanePostProcess* laneNet = new LanePostProcess();
 
     // Load yaml
     std::string yaml_path = FLAGS_model_dir + "/deploy.yaml";
@@ -96,6 +100,7 @@ int main(int argc, char *argv[]) {
 
     // Prepare data
     cv::Mat img = cv::imread(FLAGS_img_path, cv::IMREAD_COLOR);
+    cv::Mat image_ori = img.clone();
     int cut_height = 160;
     int input_width = img.cols;
     int input_height = img.rows;
@@ -134,6 +139,25 @@ int main(int argc, char *argv[]) {
     cv::Size size = cv::Size(cols, rows);
     int skip_index = size.height * size.width;
     
+    auto lane_coords = laneNet->lane_process(7,  size ,out_num,  skip_index);
+    cv::Scalar colors[] = {cv::Scalar(255,0,0),cv::Scalar(0,255,0),
+        cv::Scalar(0,0,255), cv::Scalar(255,255,0),
+        cv::Scalar(255,0,255), cv::Scalar(0,255,255),
+        cv::Scalar(50, 100, 50), cv::Scalar(100, 50, 100)};
+    int lane_id = 0;
+    for(auto& coords: lane_coords) {
+        for(auto& coord: coords) {
+            int x = coord.first;
+            int y = coord.second;
+            if (x <= 0 || y <= 0)
+                continue;
+            cv::circle(image_ori, cv::Point(x, y), 4, colors[lane_id % 6], 2);
+        }
+        lane_id++;
+    }
+    cv::imshow("ttt", image_ori);
+    cv::waitKey();
+    return;
     const int num_class = 7;
     cv::Mat seg_result;
     seg_result.create(size, CV_32FC(num_class));
