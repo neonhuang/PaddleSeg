@@ -109,7 +109,6 @@ class Predictor:
         input_handle = self.predictor.get_input_handle(input_names[0])
         output_names = self.predictor.get_output_names()
         output_seg_handle = self.predictor.get_output_handle(output_names[0])
-        output_conf_handle = self.predictor.get_output_handle(output_names[1])
 
         args = self.args
         if not os.path.exists(args.save_dir):
@@ -132,7 +131,6 @@ class Predictor:
             self.predictor.run()
 
             seg_results = output_seg_handle.copy_to_cpu()
-            conf_results = output_conf_handle.copy_to_cpu()
 
             # get lane points
             seg_results = paddle.to_tensor([seg_results])
