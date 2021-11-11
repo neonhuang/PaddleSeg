@@ -114,7 +114,7 @@ class Tusimple:
         lane_coords_list = []
         for batch in range(len(seg_pred)):
             seg = seg_pred[batch]
-            lane_coords = self.probmap2lane(seg, thresh=self.thresh)
+            lane_coords = self.get_lane_from_seg(seg, thresh=self.thresh)
             for i in range(len(lane_coords)):
                 lane_coords[i] = sorted(
                     lane_coords[i], key=lambda pair: pair[1])
@@ -156,7 +156,7 @@ class Tusimple:
         else:
             return 0
 
-    def get_lane(self, prob_map, y_px_gap, pts, thresh, resize_shape=None):
+    def get_coords(self, prob_map, y_px_gap, pts, thresh, resize_shape=None):
         """
         Arguments:
         ----------
@@ -189,7 +189,7 @@ class Tusimple:
         self.deal_gap(coords)
         return coords
 
-    def probmap2lane(self, seg_pred, resize_shape=(720, 1280), smooth=True, y_px_gap=10, pts=56, thresh=0.6):
+    def get_lane_from_seg(self, seg_pred, resize_shape=(720, 1280), smooth=True, y_px_gap=10, pts=56, thresh=0.6):
         """
         Arguments:
         ----------
@@ -214,7 +214,7 @@ class Tusimple:
             prob_map = seg_pred[i + 1]
             if smooth:
                 prob_map = cv2.blur(prob_map, (9, 9), borderType=cv2.BORDER_REPLICATE)
-            coords = self.get_lane(prob_map, y_px_gap, pts, thresh, resize_shape)
+            coords = self.get_coords(prob_map, y_px_gap, pts, thresh, resize_shape)
             if self.is_short(coords):
                 continue
             self.add_coords(coordinates, coords, y_px_gap, H, pts)
