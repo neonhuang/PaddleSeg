@@ -31,6 +31,7 @@ class Tusimple:
         self.smooth=True    # whether to smooth the probability or not
         self.y_px_gap=10    # y pixel gap for sampling
         self.pts=56     # y pixel gap for sampling
+        self.target_shape=(720, 1280)
         self.color_map = [
             (255, 0, 0),
             (0, 255, 0),
@@ -117,7 +118,7 @@ class Tusimple:
         lane_coords_list = []
         for batch in range(len(seg_pred)):
             seg = seg_pred[batch]
-            lane_coords = self.get_lane_from_seg(seg)
+            lane_coords = self.get_lane_from_seg(seg, self.target_shape)
             for i in range(len(lane_coords)):
                 lane_coords[i] = sorted(
                     lane_coords[i], key=lambda pair: pair[1])
@@ -159,21 +160,21 @@ class Tusimple:
         else:
             return 0
 
-    def get_coords(self, prob_map, resize_shape=None):
+    def get_coords(self, prob_map, target_shape=None):
         """
         Arguments:
         ----------
         prob_map: prob map for single lane, np array size (h, w)
-        resize_shape:  reshape size target, (H, W)
+        target_shape:  reshape size target, (H, W)
 
         Return:
         ----------
         coords: x coords bottom up every y_px_gap px, 0 for non-exist, in resized shape
         """
-        if resize_shape is None:
-            resize_shape = prob_map.shape
+        if target_shape is None:
+            target_shape = prob_map.shape
         h, w = prob_map.shape
-        H, W = resize_shape
+        H, W = target_shape
         H -= self.cut_height
 
         coords = np.zeros(self.pts)
@@ -192,28 +193,28 @@ class Tusimple:
         self.deal_gap(coords)
         return coords
 
-    def get_lane_from_seg(self, seg_pred, resize_shape=(720, 1280)):
+    def get_lane_from_seg(self, seg_pred, target_shape=(720, 1280)):
         """
         Arguments:
         ----------
         seg_pred:      np.array size (5, h, w)
-        resize_shape:  reshape size target, (H, W)
+        target_shape:  reshape size target, (H, W)
 
         Return:
         ----------
         coordinates: [x, y] list of lanes, e.g.: [ [[9, 569], [50, 549]] ,[[630, 569], [647, 549]] ]
         """
-        if resize_shape is None:
-            resize_shape = seg_pred.shape[1:]  # seg_pred (5, h, w)
+        if target_shape is None:
+            target_shape = seg_pred.shape[1:]  # seg_pred (5, h, w)
         _, h, w = seg_pred.shape
-        H, W = resize_shape
+        H, W = target_shape
         coordinates = []
 
         for i in range(self.num_classes - 1):
             prob_map = seg_pred[i + 1]
             if self.smooth:
                 prob_map = cv2.blur(prob_map, (9, 9), borderType=cv2.BORDER_REPLICATE)
-            coords = self.get_coords(prob_map, resize_shape)
+            coords = self.get_coords(prob_map, target_shape)
             if self.is_short(coords):
                 continue
             self.add_coords(coordinates, coords, H)
