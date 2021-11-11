@@ -49,7 +49,7 @@ class Tusimple:
         seg_pred = nn.functional.softmax(seg_pred, axis=1)
         seg_pred = seg_pred.numpy()
         img_path = im_path
-        lane_coords_list = self.prob2lines_tusimple(seg_pred)
+        lane_coords_list = self.get_lane_coords(seg_pred)
 
         for batch in range(len(seg_pred)):
             lane_coords = lane_coords_list[batch]
@@ -83,7 +83,7 @@ class Tusimple:
 
     def generate_files(self, seg_pred, im_path):
         img_path = im_path
-        lane_coords_list = self.prob2lines_tusimple(seg_pred)
+        lane_coords_list = self.get_lane_coords(seg_pred)
 
         for batch in range(len(seg_pred)):
             lane_coords = lane_coords_list[batch]
@@ -110,7 +110,7 @@ class Tusimple:
                 saved_path = os.path.join(self.save_dir, 'vis', new_img_name)
                 self.draw(img, lane_coords, saved_path)
 
-    def prob2lines_tusimple(self, seg_pred):
+    def get_lane_coords(self, seg_pred):
         lane_coords_list = []
         for batch in range(len(seg_pred)):
             seg = seg_pred[batch]
