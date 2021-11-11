@@ -60,7 +60,6 @@ class BiSeNetLane(nn.Layer):
         self.aux_head3 = SegHead(C4, C4, num_classes)
         self.aux_head4 = SegHead(C5, C5, num_classes)
         self.seg_head = SegHead(mid_channels, mid_channels, 7)
-        # self.heads = ExistHead()
 
         self.align_corners = align_corners
         self.pretrained = pretrained
@@ -71,8 +70,6 @@ class BiSeNetLane(nn.Layer):
         feat1, feat2, feat3, feat4, sfm = self.sb(x)
         agr = self.bga(dfm, sfm)
         seg_logit = self.seg_head(agr)
-        # exist = self.heads(agr)
-        # emb_logit = self.emb_head(agr)
 
         logit_list = [seg_logit]
 
@@ -84,7 +81,6 @@ class BiSeNetLane(nn.Layer):
                 align_corners=self.align_corners) for logit in logit_list
         ]
 
-        # logit_list.append(exist)
         return logit_list
 
     def init_weight(self):
@@ -303,26 +299,3 @@ class SegHead(nn.Layer):
         conv1 = self.conv_3x3(x)
         conv2 = self.conv_1x1(conv1)
         return conv2
-
-
-class ExistHead(nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-        self.conv_1x1 = nn.Sequential(nn.Dropout(0.1), nn.Conv2D(128, 7, 1, 1))
-
-        stride = 8 * 2
-        tt = int(7 * 640 / stride * 368 / stride)
-        self.fc9 = nn.Linear(tt, 128)
-        self.fc10 = nn.Linear(128, 7 - 1)
-
-    def forward(self, x):
-        x = self.conv_1x1(x)
-        x = nn.functional.softmax(x, axis=1)
-        x = nn.functional.avg_pool2d(x, 2, stride=2, padding=0)
-        x = paddle.reshape(x, [x.shape[0], -1])
-        x = self.fc9(x)
-        x = nn.functional.relu(x)
-        x = self.fc10(x)
-        x = nn.functional.sigmoid(x)
-        return x
