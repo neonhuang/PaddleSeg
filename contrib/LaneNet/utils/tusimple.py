@@ -23,7 +23,8 @@ class Tusimple:
         self.num_classes = num_classes
         self.cut_height = cut_height
         self.dump_to_json = []
-        self.thresh = thresh
+        self.thresh = thresh    # probability threshold
+
         self.save_dir = save_dir
         self.is_show = is_show
         self.test_gt_json = test_gt_json
@@ -116,7 +117,7 @@ class Tusimple:
         lane_coords_list = []
         for batch in range(len(seg_pred)):
             seg = seg_pred[batch]
-            lane_coords = self.get_lane_from_seg(seg, thresh=self.thresh)
+            lane_coords = self.get_lane_from_seg(seg)
             for i in range(len(lane_coords)):
                 lane_coords[i] = sorted(
                     lane_coords[i], key=lambda pair: pair[1])
@@ -158,7 +159,7 @@ class Tusimple:
         else:
             return 0
 
-    def get_coords(self, prob_map, thresh, resize_shape=None):
+    def get_coords(self, prob_map, resize_shape=None):
         """
         Arguments:
         ----------
@@ -184,20 +185,19 @@ class Tusimple:
             line = prob_map[y, :]
             id = np.argmax(line)
             val = line[id]
-            if val > thresh:
+            if val > self.thresh:
                 coords[i] = int(id / w * W)
         if (coords > 0).sum() < 2:
             coords = np.zeros(self.pts)
         self.deal_gap(coords)
         return coords
 
-    def get_lane_from_seg(self, seg_pred, resize_shape=(720, 1280), thresh=0.6):
+    def get_lane_from_seg(self, seg_pred, resize_shape=(720, 1280)):
         """
         Arguments:
         ----------
         seg_pred:      np.array size (5, h, w)
         resize_shape:  reshape size target, (H, W)
-        thresh:  probability threshold
 
         Return:
         ----------
@@ -213,7 +213,7 @@ class Tusimple:
             prob_map = seg_pred[i + 1]
             if self.smooth:
                 prob_map = cv2.blur(prob_map, (9, 9), borderType=cv2.BORDER_REPLICATE)
-            coords = self.get_coords(prob_map, thresh, resize_shape)
+            coords = self.get_coords(prob_map, resize_shape)
             if self.is_short(coords):
                 continue
             self.add_coords(coordinates, coords, H)
