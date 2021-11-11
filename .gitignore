@@ -113,7 +113,7 @@ node_modules/
 package-lock.json
 
 # lane
-tusimple_lane_detection/
+tusimple/
 output/
 saved_model/
 tusimple_ipm_remap.yml

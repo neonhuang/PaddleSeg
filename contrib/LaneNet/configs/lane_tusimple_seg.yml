@@ -3,7 +3,7 @@ iters: 320000
 
 train_dataset:
   type: TusimpleSeg
-  dataset_root: ./data/tusimple_lane_detection/
+  dataset_root: ./data/tusimple/
   cut_height: 160
   transforms:
     - type: LaneRandomRotation
@@ -25,7 +25,7 @@ train_dataset:
 
 val_dataset:
   type: TusimpleSeg
-  dataset_root: ./data/tusimple_lane_detection/
+  dataset_root: ./data/tusimple/
   cut_height: 160
   transforms:
     - type: Resize
