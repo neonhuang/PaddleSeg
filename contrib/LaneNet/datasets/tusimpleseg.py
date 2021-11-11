@@ -61,7 +61,7 @@ class TusimpleSeg(paddle.io.Dataset):
         with open(file_path, 'r') as f:
             for line in f:
                 items = line.strip().split()
-                if len(items) != 8:
+                if len(items) != 2:
                     if mode == 'train' or mode == 'val':
                         raise Exception(
                             "File list format incorrect! It should be"

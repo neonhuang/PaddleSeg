@@ -3,7 +3,7 @@ iters: 320000
 
 train_dataset:
   type: TusimpleSeg
-  dataset_root: /home/work/resa/data/tusimple/
+  dataset_root: ./data/tusimple_lane_detection/
   cut_height: 160
   transforms:
     - type: LaneRandomRotation
@@ -28,7 +28,7 @@ train_dataset:
 
 val_dataset:
   type: TusimpleSeg
-  dataset_root: /home/work/resa/data/tusimple/
+  dataset_root: ./data/tusimple_lane_detection/
   cut_height: 160
   transforms:
     - type: Resize
@@ -50,7 +50,6 @@ lr_scheduler:
 loss:
   types:
     - type: LaneCrossEntropyLoss
-#    - type: LaneBCELoss
   coef: [1]
 
 model:
