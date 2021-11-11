@@ -29,7 +29,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Model training')
     # params of training
     parser.add_argument(
-        "--config", dest="cfg", help="The config file.", default=None, type=str)
+        "--config", dest="cfg", help="The config file.", default='configs/lane_tusimple_seg.yml', type=str)
     parser.add_argument(
         '--iters',
         dest='iters',
@@ -53,7 +53,7 @@ def parse_args():
         dest='save_interval',
         help='How many iters to save a model snapshot once during training.',
         type=int,
-        default=5)
+        default=1000)
     parser.add_argument(
         '--resume_model',
         dest='resume_model',
