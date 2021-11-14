@@ -52,14 +52,14 @@ def gen_label_for_json(args, image_set):
             # ---------------------------------------------
 
             img_path = label['raw_file']
-            seg_img = np.zeros((H, W, 3))
+            seg_img = np.zeros([H, W], np.uint8)
             list_str = []  # str to be written to list.txt
             for i in range(len(lanes)):
                 coords = lanes[i]
                 if len(coords) < 4:
                     continue
                 for j in range(len(coords)-1):
-                    cv2.line(seg_img, coords[j], coords[j+1], (i+1, i+1, i+1), SEG_WIDTH//2)
+                    cv2.line(seg_img, coords[j], coords[j+1], i+1, SEG_WIDTH//2)
 
             seg_path = img_path.split("/")
             seg_path, img_name = os.path.join(args.root, args.savedir, seg_path[1], seg_path[2]), seg_path[3]
@@ -98,7 +98,7 @@ def generate_label(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root', type=str, default='/Users/huangshenghui/PP/PaddleSeg/contrib/LaneNet/data/tusimple_lane_detection/', help='The root of the Tusimple dataset')
+    parser.add_argument('--root', type=str, default='/Users/huangshenghui/PP/PaddleSeg/contrib/LaneNet/data/tusimple/', help='The root of the Tusimple dataset')
     parser.add_argument('--savedir', type=str, default='seg_label', help='The root of the Tusimple dataset')
     args = parser.parse_args()
 

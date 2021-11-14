@@ -120,3 +120,6 @@ tusimple_ipm_remap.yml
 result/
 test_images/
 visual_results/
+paddle/
+cache/
+jniLibs/
