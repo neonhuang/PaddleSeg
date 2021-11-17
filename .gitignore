@@ -123,3 +123,5 @@ visual_results/
 paddle/
 cache/
 jniLibs/
+log*
+output*
