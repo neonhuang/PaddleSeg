@@ -1,7 +1,7 @@
 English | [简体中文](README_CN.md)
 
 # LaneSeg
-Lane detection is a category of automatic driving algorithms, which can be used to assist vehicle positioning and decision-making. In the early days, there were lane detection methods based on traditional image processing, but with the evolution of technology, the scenes that lane detection tasks deal with More and more diversified, and more methods are currently seeking to detect the location of lane semantically. This project mainly uses PaddleSeg for lane detection.
+Lane detection is a category of automatic driving algorithms, which can be used to assist vehicle positioning and decision-making. In the early days, there were lane detection methods based on traditional image processing, but with the evolution of technology, the scenes that lane detection tasks deal with are more and more diversified, and more methods are currently seeking to detect the location of lane semantically. This project mainly uses PaddleSeg for lane detection.
 
 ## Contents
 - [Installation](#Installation)
@@ -41,7 +41,7 @@ cd contrib/LaneSeg
 
 ## Models
 
-The evaluation base on TuSimple challenge evaluation method you can get more information from [TuSimple exampe](https://github.com/TuSimple/tusimple-benchmark/blob/master/example/lane_demo.ipynb)
+The evaluation is base on TuSimple challenge evaluation method. You can get more information from [TuSimple example](https://github.com/TuSimple/tusimple-benchmark/blob/master/example/lane_demo.ipynb)
 
 Lane detection model performance on Tusimple.
 
